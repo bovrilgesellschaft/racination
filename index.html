@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Racination</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="border">
+    <main id="screen">
+      <p style="padding:1em">Loading Racination&hellip; If this message stays, check that the game's files are all in one folder.</p>
+    </main>
+  </div>
+
+  <!-- Used by "Load file" to pick a save file. -->
+  <input type="file" id="import-file" accept=".json,application/json" hidden>
+
+  <!-- Data files first, then the engine. -->
+  <script src="data/house.js"></script>
+  <script src="engine.js"></script>
+</body>
+</html>
