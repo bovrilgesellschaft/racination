@@ -16,17 +16,18 @@
   var HOUSE = DATA.house;
   var H = window.RACINATION_HOUSEHOLD;
   var MI = window.RACINATION_MISTRESS;
+  var EC = window.RACINATION_ECONOMY;
 
   var SAVE_KEY = "racination.save.v1";
   var ADULT_KEY = "racination.adult";
   var TESTING_KEY = "racination.testing";
-  var SAVE_VERSION = 3;
+  var SAVE_VERSION = 4;
 
   var screenEl = document.getElementById("screen");
   var borderEl = document.getElementById("border");
   var fileInput = document.getElementById("import-file");
 
-  if (!HOUSE || !HOUSE.startDate || !H || !MI || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
+  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
     screenEl.innerHTML = '<p class="warn">One of the game’s files is missing or has a mistake in it, '
       + "so the game cannot start. If you have just edited a file in the data folder, check it for a missing "
       + "comma or quotation mark.</p>";
@@ -210,6 +211,7 @@
     };
     draft = null;
     addHousehold();
+    EC.initHouse(state);
     return state;
   }
 
@@ -220,8 +222,8 @@
 
   // Bring an older save up to date.
   function upgrade(s) {
+    state = s;
     if (s.version < 2) {
-      state = s;
       s.residents = [];
       s.departed = [];
       s.nextId = 1;
@@ -233,6 +235,11 @@
       s.mistress = null;
       s.rules = {};
       s.version = 3;
+    }
+    if (s.version < 4 || !s.house) {
+      // Before Milestone 4a there were no rooms, Pit or guests.
+      EC.initHouse(s);
+      s.version = 4;
     }
     if (!s.rules) s.rules = {};
     if (!Array.isArray(s.residents)) s.residents = [];
@@ -278,6 +285,11 @@
      ============================================================ */
 
   function ensureMatinsLine() {
+    // The week begins: guests arrive, the post comes, the outside world's news.
+    if (state.house && state.mistress) {
+      var monday = mondayOf(state.week);
+      EC.startWeek(state, monday, seasonOf(monday), rand);
+    }
     if (state.matinsLine) return;
     if (state.week === 0 && HOUSE.openingLine) {
       state.matinsLine = HOUSE.openingLine;
@@ -290,13 +302,6 @@
     saveGame();
   }
 
-  function amountFor(item, season) {
-    var base = (item.seasons && item.seasons[season] != null) ? item.seasons[season] : item.amount;
-    var vary = Number(item.vary) || 0;
-    var factor = 1 + (rand() * 2 - 1) * vary;
-    return Math.round(pence(base) * factor);
-  }
-
   function entryFor(week) {
     for (var i = state.ledger.length - 1; i >= 0; i--) {
       if (state.ledger[i].week === week) return state.ledger[i];
@@ -307,29 +312,22 @@
   function castUpWeek() {
     if (entryFor(state.week)) return;
     var season = seasonOf(mondayOf(state.week));
-    var lines = [];
+    if (state.house.weekOf !== state.week) EC.startWeek(state, mondayOf(state.week), season, rand);
+
+    // The week's accounts. Repairs and restorations were paid when ordered.
+    var lines = EC.weekAccounts(state, season);
+    var net = 0;
+    lines.forEach(function (l) { net += l.amount; });
+    state.money += net;
+    lines = lines.concat(state.house.spent || []);
+    state.house.spent = [];
     var received = 0, paid = 0;
-
-    (HOUSE.income || []).forEach(function (item) {
-      var a = amountFor(item, season);
-      if (a !== 0) { lines.push({ label: item.label, amount: a }); received += a; }
-    });
-    (HOUSE.expenses || []).forEach(function (item) {
-      var a = amountFor(item, season);
-      if (a !== 0) { lines.push({ label: item.label, amount: -a }); paid += a; }
-    });
-
-    state.money += received - paid;
+    lines.forEach(function (l) { if (l.amount > 0) received += l.amount; else paid -= l.amount; });
 
     // The household's week.
-    var people = [], events = [], departures = [];
+    var events = [], departures = [];
     state.residents.forEach(function (r) {
       var res = H.weekly(r, season);
-      people.push({
-        id: r.id, name: H.displayName(r),
-        racination: Math.round(r.meters.racination), devotion: Math.round(r.meters.devotion), doubt: Math.round(r.meters.doubt),
-        dr: r.last.racination, dd: r.last.devotion, db: r.last.doubt
-      });
       res.events.forEach(function (e) { events.push(e); });
       if (res.departs) departures.push(r);
     });
@@ -338,6 +336,18 @@
       events.push(line);
       state.departed.push({ id: r.id, name: H.displayName(r), first: r.first, week: state.week, reason: "racinated", line: line });
       state.residents = state.residents.filter(function (x) { return x.id !== r.id; });
+    });
+
+    // The house's week: rooms, the Pit, guests' opinion, debt; and how the house touches each woman.
+    EC.houseWeek(state, season).forEach(function (e) { events.push(e); });
+    EC.residentEffects(state);
+
+    var people = state.residents.map(function (r) {
+      return {
+        id: r.id, name: H.displayName(r),
+        racination: Math.round(r.meters.racination), devotion: Math.round(r.meters.devotion), doubt: Math.round(r.meters.doubt),
+        dr: r.last.racination, dd: r.last.devotion, db: r.last.doubt
+      };
     });
 
     var mistressWeek = null;
@@ -360,9 +370,13 @@
       balance: state.money,
       people: people,
       events: events,
-      departures: departures.map(function (r) { return H.displayName(r); })
+      departures: departures.map(function (r) { return H.displayName(r); }),
+      guests: state.house.guests,
+      pit: Math.round(state.house.pit),
+      pitChange: state.house.pitLast
     });
     state.reckoningLine = pick(HOUSE.reckoningLines, null);
+    state.endReason = EC.endReason(state);
   }
 
   function goToRota() {
@@ -383,14 +397,20 @@
   }
 
   function nextWeek() {
-    state.week += 1;
-    state.matinsLine = null;
-    state.reckoningLine = null;
-    if (state.week >= TOTAL_WEEKS) {
+    if (state.endReason) {
       state.ended = true;
       state.phase = "end";
     } else {
-      state.phase = "matins";
+      state.week += 1;
+      state.matinsLine = null;
+      state.reckoningLine = null;
+      if (state.week >= TOTAL_WEEKS) {
+        state.ended = true;
+        state.endReason = "decade";
+        state.phase = "end";
+      } else {
+        state.phase = "matins";
+      }
     }
     saveGame();
     view = "game";
@@ -507,11 +527,13 @@
       + "<span>" + weekText + "</span>"
       + "<span>" + shortDate(d) + " · " + capital(seasonOf(d)) + "</span>"
       + "<span>" + state.residents.length + " in the house</span>"
+      + (state.house ? '<span class="pit-status">Pit ' + Math.round(state.house.pit) + "</span>" : "")
       + "<span>" + moneyHTML(state.money) + "</span></div>"
       + '<nav class="menu" aria-label="Game menu">'
       + (view !== "game" ? '<button data-act="back">The week</button>' : "")
       + (state.mistress ? '<button data-act="mistress">Mistress</button>' : "")
       + '<button data-act="household">Household</button>'
+      + (state.house ? '<button data-act="house">House</button>' : "")
       + '<button data-act="ledger">Ledger</button>'
       + '<button data-act="export">Save file</button>'
       + '<button data-act="import">Load file</button>'
@@ -643,16 +665,7 @@
     ensureMatinsLine();
     var d = mondayOf(state.week);
     var last = state.week > 0 ? entryFor(state.week - 1) : null;
-    var report;
-    if (!last) {
-      report = "<p>Money in hand: <strong>" + moneyHTML(state.money) + "</strong>.</p>"
-        + "<p>" + state.residents.length + " women are in the house.</p>"
-        + '<p class="note small">The ledger has been opened today. Provisions, coal and the post will join this report in later milestones.</p>';
-    } else {
-      report = "<p>Last week the house received " + moneyHTML(last.received)
-        + " and paid out " + moneyHTML(last.paid) + ".</p>"
-        + "<p>Money in hand: <strong>" + moneyHTML(state.money) + "</strong>.</p>";
-    }
+    var report = matinsLedger(last);
 
     var moods = "<p>" + esc(T(H.householdMood(state.residents))) + "</p>";
     if (last && last.people && last.people.length) {
@@ -674,6 +687,8 @@
       + '<h2 class="band">Matins</h2>'
       + '<p class="dateline">' + esc(longDate(d)) + "</p>"
       + '<div class="pane"><p>' + esc(T(state.matinsLine)) + "</p>"
+      + (state.house && state.house.news && state.house.news.length
+        ? state.house.news.map(function (n) { return '<p class="news">' + esc(T(n)) + "</p>"; }).join("") : "")
       + (MI.inCrisis(state.mistress) ? '<p class="note">' + esc(T(H.helpers.fixedPick(MI.data.crisisLines, "c" + state.week))) + "</p>" : "")
       + "</div>"
       + '<h2 class="band blue">The Housekeeper’s report</h2>'
@@ -761,6 +776,8 @@
       + '<div class="pane" style="border-top:3px double var(--blue)">'
       + "<p>" + (net >= 0 ? "The week ends " + money(net) + " to the good." : "The week ends " + money(-net) + " to the bad.")
       + " Carried forward: <strong>" + moneyHTML(e.balance) + "</strong>.</p>"
+      + (e.pit != null ? "<p>The Pit stands at " + e.pit + " " + delta(e.pitChange || 0) + ". "
+        + (e.guests ? e.guests + (e.guests === 1 ? " paying guest" : " paying guests") + " left this morning." : "") + "</p>" : "")
       + '<p class="note">' + esc(T(state.reckoningLine || "")) + "</p></div>"
       + (people || events ? '<h2 class="band blue">The household’s week</h2>'
         + (events ? '<div class="pane">' + events + "</div>" : "")
@@ -774,15 +791,18 @@
   }
 
   function viewEnd() {
+    var reason = state.endReason || "decade";
+    var ending = EC.data.endings[reason] || EC.data.endings.decade;
     var gone = state.departed.length
-      ? "<p>" + state.departed.length + " women left the house racinated over the decade.</p>" : "";
+      ? "<p>" + state.departed.length + " women left the house racinated.</p>" : "";
+    var when = reason === "decade" ? sundayOf(TOTAL_WEEKS - 1) : sundayOf(Math.min(state.week, TOTAL_WEEKS - 1));
     return statusBar() + takeFlash()
       + '<div class="body">'
-      + '<h2 class="band black">The End of the Decade</h2>'
-      + '<p class="dateline">' + esc(longDate(sundayOf(TOTAL_WEEKS - 1))) + "</p>"
-      + '<div class="pane"><p>' + esc(HOUSE.endingPlaceholder) + "</p>"
+      + '<h2 class="band black">' + esc(ending.title) + "</h2>"
+      + '<p class="dateline">' + esc(longDate(when)) + "</p>"
+      + '<div class="pane"><p>' + esc(T(ending.text)) + "</p>"
       + "<p>Money in hand at the close: <strong>" + moneyHTML(state.money) + "</strong>, against "
-      + moneyHTML(state.openingMoney) + " in January 1983.</p>" + gone
+      + moneyHTML(state.openingMoney) + " at the start.</p>" + gone
       + '<p class="note small">The proper endings arrive in Milestone 11.</p></div>'
       + '<div class="actions">'
       + '<button data-act="household">The household</button>'
@@ -790,6 +810,98 @@
       + '<button data-act="export">Save file</button>'
       + '<button class="primary" data-act="title" data-primary>Title</button>'
       + "</div></div>";
+  }
+
+  /* ---------- The Housekeeper's ledger at Matins ---------- */
+
+  function lineAmount(entry, label) {
+    if (!entry) return 0;
+    var t = 0;
+    entry.lines.forEach(function (l) { if (l.label.indexOf(label) === 0) t += l.amount; });
+    return t;
+  }
+
+  function matinsLedger(last) {
+    var hs = state.house;
+    var ED = EC.data;
+    var rows = [];
+    function row(label, value) { rows.push("<tr><td>" + esc(label) + '</td><td class="num">' + value + "</td></tr>"); }
+    row("Money in hand", "<strong>" + moneyHTML(state.money) + "</strong>");
+    if (last) {
+      row("Received last week", money(last.received));
+      row("Paid out last week", money(last.paid));
+      row("Provisions", money(-lineAmount(last, "Provisions")));
+      row("Coal and paraffin", money(-lineAmount(last, "Coal and paraffin")));
+    }
+    var pw = EC.pitWord(hs.pit);
+    var trend = hs.pitLast > 0.4 ? " (rising)" : hs.pitLast < -0.4 ? " (falling)" : "";
+    row("The Pit", Math.round(hs.pit) + " · " + esc(pw.word) + esc(trend));
+    row("The post", hs.post + (hs.post === 1 ? " letter" : " letters"));
+    row("Paying guests this week", hs.guests + " of " + EC.guestCapacity(state) + " rooms");
+    var table = '<div class="book inline-book"><table><tbody>' + rows.join("") + "</tbody></table></div>";
+
+    var notes = [];
+    notes.push(pw.line);
+    if (hs.guests === 0) notes.push(ED.guestLines.none);
+    else if (hs.guests === 1) notes.push(ED.guestLines.one);
+    else notes.push(ED.guestLines.some.replace("{n}", hs.guests));
+    var shabby = EC.shabbyRooms(state);
+    if (shabby) notes.push((shabby === 1 ? "One room is" : shabby + " rooms are") + " shabby enough to trouble the household.");
+    var html = table + "<p>" + esc(notes.join(" ")) + "</p>";
+    if (state.money < 0) {
+      var left = Math.max(1, ED.bankruptWeeks - hs.debtWeeks);
+      html += '<p class="warn">' + esc(ED.debtWarning.replace("{weeks}", left + (left === 1 ? " week" : " weeks"))) + "</p>";
+    }
+    return html;
+  }
+
+  /* ---------- The house: rooms ---------- */
+
+  function viewHouse() {
+    var hs = state.house;
+    var ED = EC.data;
+    var rows = hs.rooms.map(function (r) {
+      var d = EC.roomDef(r.id) || { name: r.id };
+      var shabby = r.condition < ED.shabbyBelow;
+      var tags = [];
+      if (d.guest) tags.push(r.condition >= ED.guestRoomUsableAt ? "guest room" : "guest room, unfit");
+      if (shabby) tags.push("shabby");
+      if (r.restoring) tags.push("restoring: " + r.restoring + (r.restoring === 1 ? " week" : " weeks"));
+      var canRestore = !r.restoring && r.period < 100 && r.id !== "computing";
+      return '<div class="room-row">'
+        + '<div class="room-name"><strong>' + esc(d.name) + "</strong>"
+        + (tags.length ? ' <span class="small note">' + esc(tags.join(" · ")) + "</span>" : "") + "</div>"
+        + meter("Period", r.period, null, "per")
+        + meter("Condition", r.condition, null, shabby ? "dbt" : "cond")
+        + '<div class="room-actions">'
+        + '<button data-act="repair" data-room="' + r.id + '"' + (r.condition >= 100 ? " disabled" : "") + ">Repair, "
+        + money(pence(EC.repairCost())) + "</button>"
+        + (r.id === "computing" ? '<span class="small note">The Computing Room cannot be made period.</span>'
+          : '<button data-act="restore" data-room="' + r.id + '"' + (canRestore ? "" : " disabled") + ">Restore, "
+            + money(pence(ED.restore.cost)) + ", " + ED.restore.weeks + " weeks</button>")
+        + "</div></div>";
+    }).join("");
+
+    var avg = Math.round(EC.averagePeriod(state));
+    var tenure = EC.owned(state) ? "owned outright by the Mistress (rates of " + money(pence(ED.ownerRates)) + " a week)"
+      : "rented (" + money(pence(ED.rent)) + " a week)";
+    return statusBar() + takeFlash()
+      + '<div class="body">'
+      + '<h2 class="band blue">The House</h2>'
+      + '<p class="dateline">' + esc(HOUSE.name) + ", " + tenure + "</p>"
+      + '<div class="pane">'
+      + '<div class="book inline-book"><table><tbody>'
+      + '<tr><td>Average Period</td><td class="num">' + avg + "</td></tr>"
+      + '<tr><td>Guest rooms fit for use</td><td class="num">' + EC.guestCapacity(state) + "</td></tr>"
+      + '<tr><td>Reputation with guests</td><td class="num">' + Math.round(hs.reputation) + "</td></tr>"
+      + '<tr><td>Shabby rooms</td><td class="num">' + EC.shabbyRooms(state) + "</td></tr>"
+      + "</tbody></table></div>"
+      + '<p class="small note">Period is how far a room feels from the Pit; Condition is its state of repair. Repairs are paid at once and appear in Sunday’s accounts. '
+      + "Shabby rooms raise the Pit and the household’s Doubt. A guest room below " + ED.guestRoomUsableAt + " Condition cannot be let.</p>"
+      + "</div>"
+      + '<div class="pane rooms">' + rows + "</div>"
+      + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div>'
+      + "</div>";
   }
 
   /* ---------- The household ---------- */
@@ -1193,6 +1305,7 @@
       case "confirm-new": html = viewConfirmNew(); break;
       case "ledger": html = viewLedger(); break;
       case "household": html = viewHousehold(); break;
+      case "house": html = viewHouse(); break;
       case "resident": html = viewResident(); break;
       case "mistress": html = state.mistress ? viewMistress() : viewCreate(); break;
       case "game":
@@ -1344,6 +1457,13 @@
         }
         break;
       case "mistress": goView("mistress"); break;
+      case "house": goView("house"); break;
+      case "repair":
+        if (EC.repair(state, el.getAttribute("data-room"))) { saveGame(); setFlash("Repaired. The cost goes into this week’s accounts."); }
+        rerenderKeepingPlace(); break;
+      case "restore":
+        if (EC.restore(state, el.getAttribute("data-room"))) { saveGame(); setFlash("The restoration has begun. It will be finished in " + EC.data.restore.weeks + " weeks."); }
+        rerenderKeepingPlace(); break;
       case "choose":
         MI.chooseFor(draft, el.getAttribute("data-section"));
         rerenderKeepingPlace(); break;

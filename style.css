@@ -573,6 +573,36 @@ label.field input:focus-visible { outline: 2px solid var(--byellow); outline-off
   .grid { grid-template-columns: 1fr; }
 }
 
+/* ---------- The house (Milestone 4a) ---------- */
+
+.meter.per .mbar span  { background: var(--yellow); }
+.meter.cond .mbar span { background: var(--cyan); }
+
+.room-row {
+  padding: 0.45em 0 0.55em;
+  border-bottom: 1px solid var(--cyan);
+}
+.room-row:last-child { border-bottom: 0; }
+.room-name { margin-bottom: 0.15em; }
+.room-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35em;
+  margin-top: 0.3em;
+}
+.room-actions button { font-size: 0.85em; padding: 0.05em 0.5em; }
+
+.book.inline-book { border-top: 3px double var(--blue); margin: 0 0 0.6em; }
+.book.inline-book td:first-child { border-right: 2px solid var(--red); }
+
+p.news {
+  background: var(--black);
+  color: var(--byellow);
+  padding: 0.3em 0.5em;
+}
+
+.pit-status { color: var(--bwhite); }
+
 /* ---------- Small screens ---------- */
 
 @media (max-width: 480px) {

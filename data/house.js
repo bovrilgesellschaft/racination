@@ -1,8 +1,9 @@
 /*
   RACINATION — data/house.js
   ---------------------------------------------------------------
-  The house's starting figures, its weekly accounts and the lines
-  the Housekeeper writes in the day-book.
+  The house's name, its dates, and the lines the Housekeeper writes
+  in the day-book. The money is in data/economy.js, and the Mistress's
+  background sets the starting sum.
 
   This file is for editing. You can safely change:
     - any words between quotation marks
@@ -12,8 +13,6 @@
   Leave the names before the colons (startingMoney:, label: and so on)
   exactly as they are: the engine looks for them by name.
 
-  Milestone 1 figures are placeholders. Milestone 4 replaces them
-  with the real economy.
   ---------------------------------------------------------------
 */
 
@@ -27,28 +26,12 @@ window.RACINATION_DATA.house = {
   startDate: "1983-01-03",
   endDate:   "1989-12-31",
 
-  // Money in hand on the first Monday, in pounds.
+  // Money in hand before a Mistress is chosen (her background then sets it), in pounds.
   startingMoney: 1200.00,
 
   /*
-    Weekly accounts.
-    amount  = the usual weekly sum in pounds.
-    seasons = (optional) a different sum for each season.
-    vary    = how much it wanders week to week: 0.1 means up to 10% either way.
+    The weekly accounts now live in data/economy.js (Milestone 4a).
   */
-  income: [
-    { label: "Mail-order publications", amount: 20.00, vary: 0.25 },
-    { label: "Needlework and dressmaking", amount: 7.00, vary: 0.20 },
-    { label: "Remittances", amount: 40.00, vary: 0.10 }
-  ],
-
-  expenses: [
-    { label: "Rent", amount: 30.00, vary: 0 },
-    { label: "Provisions", amount: 22.00, vary: 0.10 },
-    { label: "Coal and paraffin", seasons: { winter: 16.00, spring: 8.00, summer: 3.00, autumn: 10.00 }, vary: 0.15 },
-    { label: "Postage", amount: 3.40, vary: 0.20 },
-    { label: "Printing", amount: 5.00, vary: 0.30 }
-  ],
 
   // The Housekeeper's line for the very first Monday.
   openingLine:
@@ -110,10 +93,7 @@ window.RACINATION_DATA.house = {
   // Shown on the placeholder rota page until Milestone 2.
   rotaPlaceholder:
     "The rota board hangs in the scullery passage, its pegs empty and its card unwritten. "
-    + "The household's names will be chalked here in due course.",
+    + "The household's names will be chalked here in due course."
 
-  // Shown when the run reaches its end.
-  endingPlaceholder:
-    "December 1989. The decade the house never consented to has ended without consulting it. "
-    + "Whatever the house has become, it is still standing, and the Housekeeper has ruled off the last page."
+  // The endings' words are in data/economy.js (under "endings").
 };

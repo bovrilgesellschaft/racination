@@ -3,12 +3,12 @@
 A household-management game of devotion, discipline and the Pit, 1983–1989.
 Adults only (18+).
 
-Current build: **Milestone 3, the Mistress.** A new game opens on her creation
-screen: name (or a random one), age, appearance from the spreadsheet lists,
-voice, mark, scent, style within the 1930s and background, with a live preview.
-She has her own page, meters and portrait description, and her traits appear
-in the house's lines. Milestone 2's residents, rota and weekly moods, and
-Milestone 1's turn, ledger and saving, are all still here.
+Current build: **Milestone 4a, the household economy.** Real weekly accounts
+(paying guests, publications, needlework, contributions; rent, provisions,
+coal, post), a House page of rooms with Period and Condition to repair and
+restore, the Pit meter, seasons, the outside world's events on their real
+dates, and two new ways to lose: bankruptcy and the Pit. Milestones 1 to 3
+(the turn, residents, the rota and the Mistress) are all still here.
 
 ## How to play it
 
@@ -32,7 +32,9 @@ Keep all the files together in their folders, or the game can't find them.
 
 Everything in the `data` folder is for editing:
 
-- `data/house.js`: starting money, weekly accounts, the Housekeeper's lines.
+- `data/house.js`: the house's name, dates and the Housekeeper's lines.
+- `data/economy.js`: every price, the rooms, the Pit, paying guests, the
+  outside world's dated events and the endings' words.
 - `data/appearance.js`: the appearance lists (from the spreadsheet), hair
   styles, make-up, expressions and the sentences descriptions are built from.
 - `data/wardrobe.js`: the 1930s and modern garments.
@@ -66,6 +68,7 @@ for checking the game and will be removed before release.
 | `engine.js` | The turn, the screens, money, saving |
 | `household.js` | Making, describing and dressing residents; their weekly meters |
 | `mistress.js` | The Mistress: creation choices, description, tokens, her weekly meters |
+| `economy.js` | The weekly accounts, rooms, guests, the Pit and the endings it can cause |
 | `data/` | Figures and words you can edit |
 | `fonts/` | The two fonts and their licences |
 
