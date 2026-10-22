@@ -33,7 +33,8 @@
   function all() {
     return (D.letters || []).map(function (e) { if (!e.kind) e.kind = "letter"; return e; })
       .concat(D.events || [])
-      .concat((D.stories || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }));
+      .concat((D.stories || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }))
+      .concat((D.romanceEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }));
   }
 
   function byId(id) {
@@ -137,10 +138,17 @@
     if (w.beliefAbove != null && !(ev.belief > w.beliefAbove)) return null;
     if (w.beliefBelow != null && !(ev.belief < w.beliefBelow)) return null;
     if (w.record && !(ev.records[w.record] > 0)) return null;
+    var IN = window.RACINATION_INTIMACY;
+    if ((w.coercionAbove != null || w.rungBelow != null || w.rungAtLeast != null) && !(IN && IN.conditionOK(state, w))) return null;
+    var onlyIds = null;
+    if (w.sameCourtship) {
+      onlyIds = IN ? IN.sameCourtshipResidents(state) : [];
+      if (!onlyIds.length) return null;
+    }
 
     var ctx = {};
     if (w.resident) {
-      var pool = state.residents.filter(function (r) { return residentMatches(r, w.resident); });
+      var pool = state.residents.filter(function (r) { return residentMatches(r, w.resident) && (!onlyIds || onlyIds.indexOf(r.id) >= 0); });
       if (!pool.length) return null;
       ctx.resident = pool[Math.floor(rand() * pool.length)].id;
     }
@@ -205,6 +213,10 @@
           if (e.onlyIfStillTrue && !strict) return;   // circumstances have changed; the follow-up lapses
           var ctx = strict || {};
           if (f.resident != null && state.residents.some(function (r) { return r.id === f.resident; })) ctx.resident = f.resident;
+          if (f.other != null && state.residents.some(function (r) { return r.id === f.other; })) ctx.other = f.other;
+          // A follow-up about a woman who has since left the house lapses.
+          if (f.resident != null && e.when && e.when.resident && ctx.resident !== f.resident) return;
+          if (f.other != null && e.when && e.when.other && ctx.other !== f.other) return;
           queue(state, e, ctx);
           taken[e.id] = true;
         }
@@ -303,6 +315,7 @@
     t[prefix + ".first"] = p.first || p.surname;
     t[prefix + ".surname"] = p.surname;
     t[prefix + ".title"] = p.title;
+    if (p.polarity) t[prefix + ".polarityPlural"] = p.polarity + "s";
   }
 
   function findResident(state, id) {
@@ -427,6 +440,10 @@
     if (fx.dismissHousekeeper) state.housekeeper = null;
     if (fx.record) {
       asList(fx.record).forEach(function (k) { state.events.records[k] = (state.events.records[k] || 0) + 1; });
+    }
+    if (fx.bond || fx.bondMistress || fx.breakBond || fx.amends || fx.truth || fx.record) {
+      var IN2 = window.RACINATION_INTIMACY;
+      if (IN2) IN2.applyEffects(state, p, fx);
     }
     if (fx.followUp) {
       asList(fx.followUp).forEach(function (f) {
@@ -604,6 +621,7 @@
     unanswered: unanswered,
     takeNotes: takeNotes,
     weekly: weekly,
+    queueEvent: function (state, id, ctx) { var e = byId(id); if (e) queue(state, e, ctx || {}); },
     beliefWord: beliefWord,
     hear: hear,
     glossary: glossary,

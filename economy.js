@@ -309,7 +309,8 @@
       if (GD && hs.guestList && hs.guestList.length) {
         hs.guestList.forEach(function (gst, i) {
           var luck = (Math.sin((state.week + 1) * 12.9898 + i * 78.233) + 1) / 2;   // steady per guest and week
-          var happy = luck * 100 < hs.satisfaction;
+          // A rite she enjoyed (or did not, or was pressed into) colours her whole visit (Milestone 6).
+          var happy = luck * 100 < hs.satisfaction + (gst.riteBonus || 0);
           gst.outcome = happy ? "racinated" : "appalled";
           hs.reputation = clamp(hs.reputation + (happy ? GD.racinatedReputation : GD.appalledReputation), 0, 100);
           var lines = happy ? GD.racinatedLines : GD.appalledLines;

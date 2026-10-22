@@ -435,7 +435,7 @@ button.tiny { font-size: 0.85em; padding: 0.05em 0.5em; background: var(--white)
 .rota-row:last-of-type { border-bottom: 0; }
 .rota-duty { display: flex; flex-direction: column; align-items: flex-end; }
 
-select.duty {
+select.duty, select.evening {
   font-family: var(--text);
   font-size: 1em;
   background: var(--black);
@@ -445,7 +445,7 @@ select.duty {
   padding: 0.1em 0.4em;
   max-width: 100%;
 }
-select.duty:focus-visible { outline: 2px solid var(--byellow); }
+select.duty:focus-visible, select.evening:focus-visible { outline: 2px solid var(--byellow); }
 
 details.notes { border-top: 3px double var(--blue); }
 details.notes summary { cursor: pointer; color: var(--blue); }
@@ -706,3 +706,9 @@ dl.glossary dd { margin: 0.1em 0 0.3em 0; }
   .book th, .book td { padding: 0.1em 0.3em; }
   h2.band { font-size: 1.5em; }
 }
+
+/* Milestone 6: the Evenings and the rite */
+label.check { display: flex; gap: 0.5em; align-items: center; margin: 0.6em 0; }
+label.check input { width: 1.2em; height: 1.2em; accent-color: var(--magenta); }
+#rite-measure, #charge-fault { max-width: 100%; }
+.rota-duty select.evening { max-width: 100%; }

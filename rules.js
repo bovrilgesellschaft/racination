@@ -58,7 +58,10 @@
     if (!steps) return { steps: 0, cost: 0, objectors: [], supporters: [] };
     var cost = r.quiet ? RU.quietCost : RU.changeCost + RU.perExtraStep * (steps - 1);
     var objectors = [], supporters = [];
-    if (!r.quiet) {
+    if (r.redFlag) {
+      // Nobody welcomes being told not to stop a rite; everybody welcomes the word restored.
+      state.residents.forEach(function (res) { (to > from ? objectors : supporters).push(res); });
+    } else if (!r.quiet) {
       var tightening = to > from;
       state.residents.forEach(function (res) {
         var likesRule = RU.welcomedBy.indexOf(res.desire) >= 0;

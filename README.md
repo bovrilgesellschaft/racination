@@ -3,13 +3,19 @@
 A household-management game of devotion, discipline and the Pit, 1983–1989.
 Adults only (18+).
 
-Current build: **Milestone 5, events and stories** (5a and 5b). Letters at
-Matins, visitors and incidents in the week's business, the Belief–Play axis and
-a Glossary (5a); recruits who write and then arrive, named paying guests who
-leave racinated or appalled, the Mistress's crisis, the Housekeeper's
-succession crisis, residents asking to leave, secrets coming to light, and the
-Mistress's contacts (5b). Fifty-nine events in all, in files you can edit (see
-`WRITING-EVENTS.md`). Milestones 1 to 4 are all still here.
+Current build: **Milestone 6, romance, ritual and consent**. A new part of
+each week, the Evenings, comes between the rota and the week's business: each
+woman spends her evening at devotions, dancing, reading aloud, courting, resting,
+or (one a week) talking with the Mistress in the Study. Courtship grows from
+admiration to devotion and may end in a bond; the rite is kept by petition or by
+charge, with a hearing she may contest or withdraw from, a measure, aftercare and
+reconciliation; paying guests may keep a rite too. Behind it all sits a hidden
+consent model, and a hidden ladder for a house that goes wrong, which ends, at
+its worst, in court. Milestones 1 to 5 are all still here.
+
+The rite and courtship are written at Gaslight tier: ceremony, feeling and
+aftermath. Fuller scenes, and the slots for your own Author-tier text, arrive
+with Milestone 7.
 
 ## How to play it
 
@@ -51,6 +57,10 @@ Everything in the `data` folder is for editing:
 - `data/stories.js`: recruits, the crises, asking to leave, secrets and contacts.
 - `data/guests.js`: paying guests' names, jobs and towns, and their reviews.
 - `data/glossary.js`: the house's language and when each term unlocks.
+- `data/consent.js`: the consent model, the Evenings, courtship, the rite and
+  its lines, paying guests' rites, and the failure-state ladder.
+- `data/romance.js`: bondings, jealousy, the truth about a yes, amends, and the
+  ladder's events (diaries, talk, the police, the trial).
 
 Any line of text can mention the Mistress with tokens such as
 `{mistress.name}`, `{mistress.voice}`, `{mistress.hair}`, `{mistress.scent}`,
@@ -66,7 +76,8 @@ shows an error after an edit, look for a missing comma or quotation mark.
 On the title screen, **Testing tools** switches on extra buttons: nudging a
 resident's or the Mistress's meters, showing a resident's secret, making a new
 household, making the Mistress again, firing any event on demand, and checking
-the event files for mistakes. They are
+the event files for mistakes, and (on the Bonds page and each resident's page)
+the hidden consent profiles, dependency and Coercion score. They are
 for checking the game and will be removed before release.
 
 ## Files
@@ -82,6 +93,7 @@ for checking the game and will be removed before release.
 | `rules.js` | House rules, objections, the Housekeeper, contributions |
 | `dress.js` | The Sewing Room, the shops, deliveries and wear |
 | `events.js` | Choosing, showing and resolving events; Belief–Play; the glossary |
+| `intimacy.js` | Consent, the Evenings, courtship, the rite, the ladder, and the engine gates (§7.5) |
 | `WRITING-EVENTS.md` | How to write your own events |
 | `data/` | Figures and words you can edit |
 | `fonts/` | The two fonts and their licences |

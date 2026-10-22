@@ -66,10 +66,23 @@ window.RACINATION_DATA.rules = {
         { id: "full", label: "Full", note: "Every guest room let whenever it can be." }
       ],
       quiet: true   // no one objects to this one
+    },
+    {
+      id: "houseWord", name: "The house word",
+      about: "Every woman has her own house word. Said during any rite, it stops everything at once, and she is sat with afterwards.",
+      options: [
+        { id: "honoured", label: "Honoured", note: "The word stops the rite at once, always, and nobody thinks the less of her for it." },
+        { id: "sparingly", label: "Used sparingly", note: "The word still stops the rite, but the household is told it should only be needed in extremity. Some will not say it when they should." }
+      ],
+      redFlag: true  // everyone objects to discouraging it
     }
   ],
 
-  defaults: { dressCode: "practical", electricity: "evenings", familyContact: "open", guestIntake: "regular" },
+  defaults: { dressCode: "practical", electricity: "evenings", familyContact: "open", guestIntake: "regular", houseWord: "honoured" },
+
+  // Under "Used sparingly", the chance a woman pushed past her limit still says her word.
+  // (The word always works when said; the rule only makes women slower to say it.)
+  sparinglySaysWord: 0.5,
 
   /* ---------- Changing a rule ---------- */
 

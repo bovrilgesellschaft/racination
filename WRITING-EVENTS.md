@@ -1,10 +1,11 @@
 # Writing your own events
 
-Events live in three files:
+Events live in four files:
 
 - `data/letters.js` holds letters, which arrive with the post at Matins.
 - `data/events.js` holds visitors and household incidents, which happen midweek on the week's business screen.
 - `data/stories.js` holds the household's longer stories: recruits, the two crises, asking to leave, secrets and the Mistress's contacts. Its opening comment lists a few extra conditions and effects used there.
+- `data/romance.js` holds bondings, jealousy, the truth about a yes, amends, and the failure-state ladder. Most of these are brought by the game itself. Its opening comment lists the extra conditions and effects (`coercionAbove`, `rungBelow`, `sameCourtship`, `bond`, `bondMistress`, `breakBond`, `amends`, `truth`).
 
 Each event is a block between `{` and `}`, with a comma after it. To add one, copy an existing block, paste it after another, and change the words.
 

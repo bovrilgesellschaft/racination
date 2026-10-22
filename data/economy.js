@@ -194,6 +194,8 @@ window.RACINATION_DATA.economy = {
       text: "{mistress.name} has laid down the keys of the house and gone, nobody is quite sure where: there was a taxi, and a suitcase, and a letter for each of the household. The house will choose a new Mistress at Matins. It will not be the same house." },
     schism: { title: "The Schism",
       text: "Half the household has gone to a farmhouse near Burford with the Housekeeper, to keep the faith properly. Hesperis House is quieter than it has ever been, and colder, and nobody quite knows which half was right." },
+    trial: { title: "R v. the Mistress",
+      text: "The jury found against {mistress.name} on most of the counts. The house was sold to pay the costs, and the women who had lived in it went back to their families, or to bedsits in Oxford, or to nobody quite knew where. Some of them still keep the house's hours, alone. None of them will speak of it to the papers, though the papers have asked." },
     decade: { title: "The End of the Decade",
       text: "December 1989. The decade the house never consented to has ended without consulting it. Whatever the house has become, it is still standing, and the Housekeeper has ruled off the last page." }
   },

@@ -20,17 +20,18 @@
   var RR = window.RACINATION_RULES;
   var DR = window.RACINATION_DRESS;
   var EV = window.RACINATION_EVENTS;
+  var IN = window.RACINATION_INTIMACY;
 
   var SAVE_KEY = "racination.save.v1";
   var ADULT_KEY = "racination.adult";
   var TESTING_KEY = "racination.testing";
-  var SAVE_VERSION = 6;
+  var SAVE_VERSION = 7;
 
   var screenEl = document.getElementById("screen");
   var borderEl = document.getElementById("border");
   var fileInput = document.getElementById("import-file");
 
-  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !EV || !DATA.events || !DATA.letters || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
+  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !EV || !IN || !DATA.consent || !DATA.romanceEvents || !DATA.events || !DATA.letters || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
     screenEl.innerHTML = '<p class="warn">One of the game’s files is missing or has a mistake in it, '
       + "so the game cannot start. If you have just edited a file in the data folder, check it for a missing "
       + "comma or quotation mark.</p>";
@@ -164,6 +165,7 @@
   }
 
   H.setRandom(rand);
+  IN.setRandom(rand);
 
   function pick(list, avoid) {
     if (!list || !list.length) return "";
@@ -218,6 +220,7 @@
     RR.ensureRules(state);
     DR.ensureDress(state);
     EV.ensureEvents(state);
+    IN.ensure(state);
     return state;
   }
 
@@ -258,6 +261,10 @@
     EV.ensureEvents(s);
     if (s.version < 6) s.version = 6;
     if (!Array.isArray(s.residents)) s.residents = [];
+    // Milestone 6: consent profiles, the Evenings, courtship and the rite.
+    IN.ensure(s);
+    if (!s.rules.houseWord) s.rules.houseWord = "honoured";
+    if (s.version < 7) s.version = 7;
     if (!Array.isArray(s.departed)) s.departed = [];
     if (typeof s.nextId !== "number") s.nextId = s.residents.length + 1;
     return s;
@@ -306,6 +313,7 @@
       EC.startWeek(state, monday, seasonOf(monday), rand);
       DR.shopsWeek(state, rand).forEach(function (n) { state.house.news.push(n); });
       EV.startWeek(state, monday, seasonOf(monday), rand);
+      IN.startWeek(state);
     }
     if (state.matinsLine) return;
     if (state.week === 0 && HOUSE.openingLine) {
@@ -314,6 +322,9 @@
       var season = seasonOf(mondayOf(state.week));
       var lines = (HOUSE.matinsLines[season] || []).concat(HOUSE.matinsLines.any || []);
       state.matinsLine = pick(lines, state.lastLine);
+      // A house that has cooled says so at Matins (Milestone 6).
+      var cool = IN.coolLine(state);
+      if (cool) state.matinsLine = cool;
     }
     state.lastLine = state.matinsLine;
     saveGame();
@@ -365,6 +376,7 @@
     RR.weekly(state, season).forEach(function (e) { events.push(e); });
     DR.wearWeek(state, season).forEach(function (e) { events.push(e); });
     EV.weekly(state);
+    IN.weekly(state).forEach(function (e) { events.push(e); });
     EV.takeNotes(state).forEach(function (n) { events.unshift(n.result); });
 
     var people = state.residents.map(function (r) {
@@ -561,6 +573,7 @@
       + (view !== "game" ? '<button data-act="back">The week</button>' : "")
       + (state.mistress ? '<button data-act="mistress">Mistress</button>' : "")
       + '<button data-act="household">Household</button>'
+      + (state.romance ? '<button data-act="bonds">Bonds</button>' : "")
       + (state.house ? '<button data-act="house">House</button>' : "")
       + (state.house ? '<button data-act="rules">Rules</button>' : "")
       + (state.house ? '<button data-act="wardrobe">Wardrobe</button>' : "")
@@ -770,8 +783,7 @@
       + (summary ? '<p class="small note">' + summary + "</p>" : "")
       + "</div>"
       + '<details class="pane notes"><summary>About the duties</summary><ul>' + notes + "</ul></details>"
-      + '<div class="actions"><button class="primary" data-act="from-rota" data-primary>'
-      + (EV.pendingFor(state, "business").length ? "On to the week’s business" : "On to Sunday") + "</button></div>"
+      + '<div class="actions"><button class="primary" data-act="from-rota" data-primary>On to the evenings</button></div>'
       + "</div>";
   }
 
@@ -1159,6 +1171,203 @@
       + "</div>";
   }
 
+  /* ---------- The Evenings, the rite and the Bonds (Milestone 6) ---------- */
+
+  function eveningSelect(r) {
+    var cur = IN.evening(state, r).reg;
+    var opts = IN.registerOptions(state, r).map(function (o) {
+      return '<option value="' + o.id + '"' + (o.id === cur ? " selected" : "") + (o.why ? " disabled" : "") + ">"
+        + esc(o.label) + (o.why ? " (" + esc(o.why) + ")" : "") + "</option>";
+    }).join("");
+    return '<select class="evening" data-id="' + r.id + '" aria-label="Evening for ' + esc(H.displayName(r)) + '">' + opts + "</select>";
+  }
+
+  function personOptions(list, withMistress, selected) {
+    var html = list.map(function (r) {
+      return '<option value="' + r.id + '"' + (r.id === selected ? " selected" : "") + ">" + esc(H.displayName(r)) + "</option>";
+    }).join("");
+    if (withMistress && state.mistress) html += '<option value="' + IN.MISTRESS + '">' + esc(MI.displayName(state.mistress)) + " (the Mistress)</option>";
+    return html;
+  }
+
+  function courtshipList() {
+    var list = IN.describeCourtships(state);
+    if (!list.length) return "<p>Nobody is courting, and nobody has been seen admiring anyone. Dancing and reading aloud are where it usually begins.</p>";
+    return '<ul class="plain">' + list.map(function (c) {
+      return "<li><strong>" + esc(c.aName) + "</strong> and <strong>" + esc(c.bName) + "</strong>: " + esc(c.what)
+        + (c.same && !c.mistress ? ' <span class="small note">(both ' + esc((resident(c.a) || {}).polarity || "") + "s)</span>" : "") + "</li>";
+    }).join("") + "</ul>";
+  }
+
+  function viewEvenings() {
+    var C6 = IN.data;
+    var open = IN.gatesOpen(state);
+    var rows = state.residents.map(function (r) {
+      var c = IN.activeCourtship(state, r.id);
+      var with_ = c ? (c.a === r.id ? c.b : c.a) : null;
+      var who = with_ == null ? "" : (with_ === IN.MISTRESS ? MI.displayName(state.mistress) : (resident(with_) ? H.displayName(resident(with_)) : ""));
+      return '<div class="rota-row">'
+        + '<div class="rota-who">' + residentLink(r) + " " + polarityTag(r) + "</div>"
+        + '<div class="rota-duty">' + eveningSelect(r)
+        + (who ? '<span class="small note">' + (c.bonded ? "bonded to " : "courting ") + esc(who) + "</span>" : "") + "</div>"
+        + "</div>";
+    }).join("");
+    var notes = C6.registers.map(function (g) { return "<li><strong>" + esc(g.label) + "</strong>: " + esc(g.note) + "</li>"; }).join("");
+
+    var R = state.romance;
+    var rite = R.rite && R.rite.stage !== "done" ? R.rite : null;
+    var petitions = R.petitions.map(function (p) {
+      var r = resident(p.rid);
+      if (!r) return "";
+      return '<div class="event-card"><p>' + esc(H.displayName(r)) + " has asked to be put right, for " + esc(p.fault) + ".</p>"
+        + '<div class="event-choices"><button data-act="hear-petition" data-id="' + r.id + '"' + (open && !rite ? "" : " disabled") + ">Hear her petition</button></div></div>";
+    }).join("");
+
+    var hs = state.house;
+    var guests = (hs && hs.guestList || []).map(function (g, i) {
+      var interest = IN.guestInterest(state, g);
+      var settled = g.rite ? ' <span class="small note">(' + esc({ enjoyed: "kept a rite, and enjoyed it", disliked: "kept a rite, and did not care for it", pressed: "pressed into a rite", declined: "declined" }[g.rite]) + ")</span>" : "";
+      return '<div class="rota-row"><div class="rota-who">' + esc(g.name) + ' <span class="small">' + esc(g.job) + ", " + esc(g.town) + "</span>" + settled + "</div>"
+        + '<div class="rota-duty"><span class="small note">' + esc(capital(C6.guestInterestWords[interest])) + ".</span>"
+        + '<button data-act="guest-rite" data-index="' + i + '"' + (open && !g.rite ? "" : " disabled") + ">Offer the rite</button></div></div>";
+    }).join("");
+
+    var eligible = state.residents.filter(function (r) { return IN.isAdult(r); });
+    var courtForm = open && eligible.length
+      ? '<div class="create"><label class="field"><span>Encourage</span><select id="court-a">' + personOptions(eligible, false) + "</select></label>"
+        + '<label class="field"><span>and</span><select id="court-b">' + personOptions(eligible, true, eligible[1] ? eligible[1].id : null) + "</select></label></div>"
+        + '<div class="actions"><button data-act="encourage">Encourage a courtship</button></div>'
+        + '<p class="small note">Each woman is asked, and may say no; a no is the end of it for now. The Mistress may court a resident herself, but the household will mind, and a woman finds it harder to refuse the Mistress.</p>'
+      : "";
+    var chargeForm = open && eligible.length
+      ? '<div class="create"><label class="field"><span>Bring a charge against</span><select id="charge-who">' + personOptions(eligible, false) + "</select></label>"
+        + '<label class="field"><span>for</span><select id="charge-fault">' + C6.faults.map(function (f) { return '<option value="' + esc(f) + '">' + esc(f) + "</option>"; }).join("") + "</select></label></div>"
+        + '<div class="actions"><button data-act="bring-charge"' + (rite ? " disabled" : "") + ">Bring the charge</button></div>"
+        + '<p class="small note">She may accept the charge, contest it, or withdraw. A withdrawal is always honoured.</p>'
+      : "";
+
+    return statusBar() + takeFlash()
+      + '<div class="body">'
+      + '<h2 class="band magenta">The Evenings</h2>'
+      + '<p class="dateline">Week of ' + esc(longDate(mondayOf(state.week))) + "</p>"
+      + (open ? "" : '<p class="warn">' + esc(C6.closedNote) + "</p>")
+      + '<div class="pane">' + (state.residents.length ? rows : "<p>The house is empty.</p>") + "</div>"
+      + '<details class="pane notes"><summary>About the evenings</summary><ul>' + notes + "</ul></details>"
+      + '<h2 class="band blue">Courtship</h2>'
+      + '<div class="pane">' + courtshipList() + courtForm + "</div>"
+      + '<h2 class="band black">The rite</h2>'
+      + '<div class="pane">'
+      + (rite ? '<p>A hearing is open. <button data-act="open-rite">Return to it</button></p>' : "")
+      + (petitions || '<p class="small note">No one has petitioned this week.</p>') + chargeForm + "</div>"
+      + (guests ? '<h2 class="band magenta">This week’s paying guests</h2><div class="pane">' + guests
+        + '<p class="small note">A guest who asked for the rite will usually love it, and say so. A guest who never asked may agree because she cannot think how to refuse.</p></div>' : "")
+      + '<div class="actions"><button class="primary" data-act="from-evenings" data-primary>'
+      + (EV.pendingFor(state, "business").length ? "On to the week’s business" : "On to Sunday") + "</button></div>"
+      + "</div>";
+  }
+
+  function viewRite() {
+    var R = state.romance;
+    var rite = R && R.rite;
+    if (!rite) {
+      return statusBar() + '<div class="body"><div class="pane"><p>No hearing is open.</p></div>'
+        + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div></div>';
+    }
+    var r = resident(rite.rid);
+    var C6 = IN.data;
+    var body = "";
+    if (rite.stage === "done") {
+      body = '<div class="pane"><p>' + esc(T(rite.text)) + "</p></div>"
+        + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the evenings</button></div>';
+    } else {
+      var lines = rite.lines.map(function (l) { return "<p>" + esc(T(l)) + "</p>"; }).join("");
+      if (rite.response === "withdrawn") {
+        body = '<div class="pane">' + lines + "</div>"
+          + '<div class="actions"><button class="primary" data-act="close-hearing" data-primary>Close the matter</button></div>';
+      } else if (rite.response === "contested") {
+        body = '<div class="pane">' + lines
+          + '<p class="small note">She has not consented. A rite kept against a contested charge is not a rite: it is a harm, and the house will remember it.</p></div>'
+          + '<div class="actions"><button class="primary" data-act="close-hearing" data-primary>Let the charge drop</button>'
+          + '<button class="danger" data-act="insist-rite">Insist</button></div>';
+      } else {
+        var hk = state.housekeeper != null && state.housekeeper !== rite.rid ? resident(state.housekeeper) : null;
+        var known = r && r.consent.known.measure;
+        var measures = C6.measures.map(function (m, i) {
+          var over = known && i > r.consent.measure;
+          return '<option value="' + m.id + '"' + (m.id === "formal" ? " selected" : "") + ">" + esc(m.label) + ": " + esc(m.note) + (over ? " (beyond her limit)" : "") + "</option>";
+        }).join("");
+        body = '<div class="pane">' + lines + "</div>"
+          + '<div class="pane create">'
+          + '<label class="field"><span>Presiding</span><select id="rite-presider"><option value="mistress">' + esc(MI.displayName(state.mistress)) + "</option>"
+          + (hk ? '<option value="housekeeper">' + esc(H.displayName(hk)) + " (the Housekeeper)</option>" : "") + "</select></label>"
+          + '<label class="field"><span>Measure</span><select id="rite-measure">' + measures + "</select></label>"
+          + '<label class="field"><span>Reconciliation</span><select id="rite-reconcile"><option value="private">Private, in the Study</option><option value="public">Public, before Evensong</option></select></label>'
+          + '<label class="check"><input type="checkbox" id="rite-aftercare" checked> Sit with her afterwards (aftercare)</label>'
+          + '<p class="small note">Her house word is <strong>' + esc(r ? r.consent.houseWord : "") + "</strong>. If she says it, everything stops at once and she is sat with, whatever was chosen above."
+          + (known ? (r.consent.measure < 0 ? " She does not want the rite at all." : " She will go as far as " + esc(C6.measures[r.consent.measure].label.toLowerCase()) + ", and no further.")
+            : " How far she will go is not yet known; a talk in the Study may tell you.") + "</p>"
+          + "</div>"
+          + '<div class="actions"><button class="primary" data-act="keep-rite" data-primary>Keep the rite</button>'
+          + '<button data-act="close-hearing">Let the matter drop</button></div>';
+      }
+    }
+    return statusBar() + takeFlash()
+      + '<div class="body">'
+      + '<h2 class="band black">' + (rite.petition ? "A petition" : "A hearing") + (r ? ": " + esc(H.displayName(r)) : "") + "</h2>"
+      + '<p class="dateline">In the Study, after Evensong</p>'
+      + body + "</div>";
+  }
+
+  function viewBonds() {
+    var R = state.romance;
+    var tools = "";
+    if (testing) {
+      var marks = Object.keys(R.marks).map(function (k) { return k + " " + R.marks[k]; }).join(", ");
+      var recs = Object.keys(state.events.records || {}).map(function (k) { return k + " " + state.events.records[k]; }).join(", ");
+      tools = '<div class="testing"><p class="small">Testing tools</p>'
+        + '<p class="small">Coercion score: ' + Math.round(IN.score(state) * 10) / 10 + " (raw " + Math.round(IN.rawScore(state) * 10) / 10
+        + ", credit " + Math.round(R.credit * 10) / 10 + "). Rung: " + esc(IN.rungName(state)) + (R.locked ? " (locked at " + esc(IN.data.rungs[R.locked].name) + ")" : "") + ".</p>"
+        + '<p class="small">Marks: ' + esc(marks || "none") + ". Records: " + esc(recs || "none") + ". House-word weeks: " + R.houseWordWeeks
+        + ". Isolation weeks: " + ((state.rules && state.rules.isolationWeeks) || 0) + ".</p></div>";
+    }
+    return statusBar() + takeFlash()
+      + '<div class="body">'
+      + '<h2 class="band magenta">Bonds</h2>'
+      + '<p class="dateline">Courtships, admirations and bonds in the house</p>'
+      + '<div class="pane">' + courtshipList()
+      + '<p class="small note">Courtship moves through Admiration, Understanding, Attachment and Devotion. At Devotion a couple may ask to be bonded. '
+      + "Two women of the same polarity may court, though more slowly, and a house given to Belief will find it irregular.</p></div>"
+      + (IN.gatesOpen(state) ? "" : '<p class="warn">' + esc(IN.data.closedNote) + "</p>")
+      + tools
+      + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div>'
+      + "</div>";
+  }
+
+  function notebookSection(r) {
+    if (!r.consent) return "";
+    var nb = IN.notebook(state, r);
+    var c = IN.activeCourtship(state, r.id);
+    var court = "";
+    if (c) {
+      var other = c.a === r.id ? c.b : c.a;
+      var oname = other === IN.MISTRESS ? MI.displayName(state.mistress) : (resident(other) ? H.displayName(resident(other)) : "");
+      court = "<p>" + (c.bonded ? "Bonded to " : "Courting ") + esc(oname) + ".</p>";
+    }
+    var test = testing
+      ? '<p class="small">Testing: courtship ' + r.consent.courtship + ", rite " + r.consent.rite + ", measure limit "
+        + (r.consent.measure < 0 ? "none" : IN.data.measures[r.consent.measure].id) + ", working " + r.consent.working
+        + ", dependency " + IN.dependency(state, r) + ".</p>"
+      : "";
+    return '<h2 class="band magenta">What the Mistress knows</h2>'
+      + '<div class="pane">' + court
+      + '<div class="book inline-book"><table><tbody>'
+      + nb.rows.map(function (x) { return "<tr><td>" + esc(x.label) + '</td><td>' + esc(x.value) + "</td></tr>"; }).join("")
+      + "</tbody></table></div>"
+      + nb.notes.map(function (n) { return '<p class="small note">' + esc(n) + "</p>"; }).join("")
+      + '<p class="small note">Learned in talks in the Study, and from what she says and does. What she wants is not always what she agrees to.</p>'
+      + test + "</div>";
+  }
+
   /* ---------- The house: rooms ---------- */
 
   function viewHouse() {
@@ -1295,6 +1504,7 @@
       + '<div class="pane">' + meters(r, state.week > 0)
       + '<p class="small note">Dressed ' + share + "% in the 1930s this week. Mood: " + esc(H.moodOf(r)) + ".</p>"
       + "</div>"
+      + notebookSection(r)
       + '<h2 class="band magenta">Her duty</h2>'
       + '<div class="pane">' + dutySelect(r)
       + '<p class="small note">' + esc(du.note) + "</p></div>"
@@ -1621,11 +1831,14 @@
       case "rules": html = viewRules(); break;
       case "wardrobe": html = viewWardrobe(); break;
       case "resident": html = viewResident(); break;
+      case "rite": html = viewRite(); break;
+      case "bonds": html = viewBonds(); break;
       case "mistress": html = state.mistress ? viewMistress() : viewCreate(); break;
       case "game":
         if (!state.mistress) html = viewCreate();
         else if (state.ended || state.phase === "end") html = viewEnd();
         else if (state.phase === "rota") html = viewRota();
+        else if (state.phase === "evenings") html = viewEvenings();
         else if (state.phase === "business") html = viewBusiness();
         else if (state.phase === "reckoning" && entryFor(state.week)) html = viewReckoning();
         else { state.phase = "matins"; html = viewMatins(); }
@@ -1761,9 +1974,57 @@
       case "to-rota": goToRota(); window.scrollTo(0, 0); break;
       case "to-reckoning": goToReckoning(); window.scrollTo(0, 0); break;
       case "from-rota":
+        state.phase = "evenings"; saveGame(); goView("game"); break;
+      case "from-evenings":
         if (EV.pendingFor(state, "business").length) { state.phase = "business"; saveGame(); goView("game"); }
         else { goToReckoning(); window.scrollTo(0, 0); }
         break;
+      case "bonds": goView("bonds"); break;
+      case "encourage":
+        var ca = document.getElementById("court-a"), cb = document.getElementById("court-b");
+        if (ca && cb) {
+          var en = IN.encourage(state, Number(ca.value), Number(cb.value));
+          if (!en.ok) setFlash(en.why, true);
+          else { saveGame(); setFlash(T(en.text), !en.yes); }
+        }
+        rerenderKeepingPlace(); break;
+      case "hear-petition":
+        var hp = IN.startHearing(state, Number(el.getAttribute("data-id")), "", true);
+        if (!hp.ok) { setFlash(hp.why, true); rerenderKeepingPlace(); }
+        else { saveGame(); goView("rite"); }
+        break;
+      case "bring-charge":
+        var cw = document.getElementById("charge-who"), cf = document.getElementById("charge-fault");
+        if (cw && cf) {
+          var bc = IN.startHearing(state, Number(cw.value), cf.value, false);
+          if (!bc.ok) { setFlash(bc.why, true); rerenderKeepingPlace(); }
+          else { saveGame(); goView("rite"); }
+        }
+        break;
+      case "open-rite": goView("rite"); break;
+      case "keep-rite":
+      case "insist-rite":
+        var rp = document.getElementById("rite-presider"), rm = document.getElementById("rite-measure");
+        var ra = document.getElementById("rite-aftercare"), rr = document.getElementById("rite-reconcile");
+        var kr = IN.keepRite(state, {
+          presider: rp ? rp.value : "mistress",
+          measure: rm ? rm.value : "formal",
+          aftercare: ra ? ra.checked : true,
+          reconciliation: rr ? rr.value : "private",
+          insist: name === "insist-rite"
+        });
+        if (!kr.ok) setFlash(kr.why, true);
+        saveGame();
+        goView("rite"); break;
+      case "close-hearing":
+        IN.closeHearing(state);
+        saveGame();
+        goView("rite"); break;
+      case "guest-rite":
+        var gr = IN.offerGuestRite(state, Number(el.getAttribute("data-index")));
+        if (!gr.ok) setFlash(gr.why, true);
+        else { saveGame(); setFlash(gr.text); }
+        rerenderKeepingPlace(); break;
       case "choose-event":
         var ce = EV.choose(state, Number(el.getAttribute("data-key")), Number(el.getAttribute("data-index")), rand);
         if (!ce.ok) setFlash(ce.why, true);
@@ -1941,6 +2202,17 @@
     var y = window.scrollY;
     render();
     window.scrollTo(0, y);
+  });
+
+  // The Evenings: each woman's register.
+  document.addEventListener("change", function (ev) {
+    var el = ev.target;
+    if (!el || !el.classList || !el.classList.contains("evening")) return;
+    var r = resident(Number(el.getAttribute("data-id")));
+    if (!r) return;
+    IN.setEvening(state, r, el.value);
+    saveGame();
+    rerenderKeepingPlace();
   });
 
   document.addEventListener("keydown", function (ev) {
