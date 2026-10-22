@@ -34,7 +34,8 @@
     return (D.letters || []).map(function (e) { if (!e.kind) e.kind = "letter"; return e; })
       .concat(D.events || [])
       .concat((D.stories || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }))
-      .concat((D.romanceEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }));
+      .concat((D.romanceEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }))
+      .concat((D.workingEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }));
   }
 
   function byId(id) {
@@ -140,6 +141,10 @@
     if (w.record && !(ev.records[w.record] > 0)) return null;
     var IN = window.RACINATION_INTIMACY;
     if ((w.coercionAbove != null || w.rungBelow != null || w.rungAtLeast != null) && !(IN && IN.conditionOK(state, w))) return null;
+    if (w.working) {
+      var WK = window.RACINATION_WORKING;
+      if (!WK || !WK.conditionOK(state, w.working)) return null;
+    }
     var onlyIds = null;
     if (w.sameCourtship) {
       onlyIds = IN ? IN.sameCourtshipResidents(state) : [];
@@ -444,6 +449,10 @@
     if (fx.bond || fx.bondMistress || fx.breakBond || fx.amends || fx.truth || fx.record) {
       var IN2 = window.RACINATION_INTIMACY;
       if (IN2) IN2.applyEffects(state, p, fx);
+    }
+    if (fx.working) {
+      var WK2 = window.RACINATION_WORKING;
+      if (WK2) WK2.applyEffects(state, fx.working);
     }
     if (fx.followUp) {
       asList(fx.followUp).forEach(function (f) {

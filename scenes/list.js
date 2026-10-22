@@ -18,7 +18,11 @@ window.RACINATION_SCENE_LIST = [
   "courtship-gramophone.js",
   "courtship-reading.js",
   "mistress-evening.js",
-  "bonding-night.js"
+  "bonding-night.js",
+  "working-chamber.js",
+  "working-outdoor.js",
+  "working-venus-chamber.js",
+  "working-saturn-rollright.js"
 ];
 
 /* Leave everything below this line alone. */

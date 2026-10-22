@@ -192,6 +192,7 @@ window.RACINATION_DATA.consent = {
   // How much each recorded thing weighs on the hidden Coercion score.
   weights: {
     riteWithoutConsent: 12,
+    uninformedWorking: 12,     // Milestone 8: the defining heresy
     riteBeyondLimit: 10,
     preventedLeaving: 8,
     extracted: 6,

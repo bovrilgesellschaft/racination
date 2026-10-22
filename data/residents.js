@@ -56,11 +56,12 @@ window.RACINATION_DATA.residents = {
 
   /* ---------- Skills ---------- */
 
-  skills: ["cookery", "needlework", "gardening", "letters", "typesetting", "programming", "liturgy", "accounts", "charm"],
+  skills: ["cookery", "needlework", "gardening", "letters", "typesetting", "programming", "liturgy", "accounts", "charm", "visualisation"],
 
   skillNames: {
     cookery: "Cookery", needlework: "Needlework", gardening: "Gardening", letters: "Letters",
-    typesetting: "Typesetting", programming: "Programming", liturgy: "Liturgy", accounts: "Accounts", charm: "Charm"
+    typesetting: "Typesetting", programming: "Programming", liturgy: "Liturgy", accounts: "Accounts", charm: "Charm",
+    visualisation: "Visualisation"
   },
 
   /* ---------- Backgrounds (GDD §6) ---------- */
@@ -86,7 +87,7 @@ window.RACINATION_DATA.residents = {
       ties: ["ex", "family"],
       blurb: "She left a semi-detached house in Swindon, a husband and a fondue set, and took only the fondue set's instructions, which she still reads for comfort." },
     { id: "nun", name: "lapsed nun", title: "Miss", pit: 0.1, ages: [33, 48],
-      skills: { liturgy: 3, needlework: 1, gardening: 1 },
+      skills: { liturgy: 3, needlework: 1, gardening: 1, visualisation: 1 },
       ties: ["family"],
       blurb: "She was eleven years in an enclosed order, and left it not for want of devotion but because she had discovered that it was addressed to the wrong person." },
     { id: "punk", name: "former punk", title: "Miss", pit: 0.8, ages: [24, 32],

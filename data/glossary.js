@@ -35,5 +35,13 @@ window.RACINATION_DATA.glossary = [
   { term: "Terms", words: ["terms"],
     meaning: "A paying guest's stay: a week of another life, at the house's rates." },
   { term: "The Mistress", words: ["mistress"],
-    meaning: "The head of the house, a brunette by temperament, with final authority over its rules, roles and rites." }
+    meaning: "The head of the house, a brunette by temperament, with final authority over its rules, roles and rites." },
+  { term: "The Working", words: ["the working", "a working", "workings"],
+    meaning: "The house's private, initiated current: two women who love each other, a purpose held between them, and the minute a Lady rises or sets. Nobody can say whether it works." },
+  { term: "The Seven Ladies", words: ["seven ladies", "golden lady", "silver lady", "evening lady", "lady bountiful", "lady of letters", "lady of the spur", "lady of the keys"],
+    meaning: "The house's own names for the seven planets of the old sky, from the Golden Lady to the Lady of the Keys. Each has her day, her hour and her domain." },
+  { term: "The Chamber", words: ["the chamber"],
+    meaning: "The room upstairs kept for the Working. It gathers Charge, as a room gathers dust, and is said to remember." },
+  { term: "Mirror and Polar", words: ["mirror reading", "polar reading", "mirrors or poles"],
+    meaning: "The two readings of the Working. Polar: power comes from complement, a blonde with a brunette. Mirror: like multiplies like." }
 ];

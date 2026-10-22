@@ -3,14 +3,16 @@
 A household-management game of devotion, discipline and the Pit, 1983–1989.
 Adults only (18+).
 
-Current build: **Milestone 7, the Author's Scene Kit**. Rites, guests' rites,
-courtship evenings and bonding nights now play as short branching scenes, read
-from files in the `scenes` folder, at the tier chosen in **Settings**: Gaslight
-(fade and implication), Candlelight (sensual, never anatomical) or Author (your
-own text, in `authored.js`, behind an 18+ confirmation). A **preview page**
-(`preview.html`) reads any scene under any setting, and a **scene checker**
-finds mistakes. `WRITING-SCENES.md` explains the format. Milestones 1 to 6 are
-all still here.
+Current build: **Milestone 8, the Working**. The house's private current of
+erotic planetary magic, hidden at the start of every run: found through a
+notebook in the Library or a senior resident's confidence, and embraced,
+tolerated or forbidden. The seven Ladies' windows come from a true ephemeris
+for 1983–89 over the downs (`data/ephemeris.js`), shown on the **Calendar**. A
+Working is planned on the Evenings page, kept in the Chamber or out on the land,
+and plays as a scene. What it does is never confirmed: the ledger records only
+coincidences. With it come Visualisation, the Chamber's Charge and its
+hauntings, the Mirror and Polar readings, being seen on the downs, and the
+sinister current. Milestones 1 to 7 are all still here.
 
 ## How to play it
 
@@ -54,6 +56,10 @@ Everything in the `data` folder is for editing:
 - `data/glossary.js`: the house's language and when each term unlocks.
 - `data/consent.js`: the consent model, the Evenings, courtship, the rite and
   its lines, paying guests' rites, and the failure-state ladder.
+- `data/working.js`: the Seven Ladies, the sites, the phrasebook, how strong a
+  Working is, what it nudges, the coincidences and the Chamber's hauntings.
+- `data/working-events.js`: the Working's events.
+- `data/ephemeris.js`: the planets' rising and setting, 1983–89 (not for editing).
 - `data/scenekit.js`: the Scene Kit's own words (the stop route, aftercare,
   her house word) and figures.
 - `scenes/`: the scene files, and `scenes/list.js`, which lists them.
@@ -94,6 +100,7 @@ for checking the game and will be removed before release.
 | `rules.js` | House rules, objections, the Housekeeper, contributions |
 | `dress.js` | The Sewing Room, the shops, deliveries and wear |
 | `events.js` | Choosing, showing and resolving events; Belief–Play; the glossary |
+| `working.js` | The Working: windows, planning, strength, nudges, the Chamber |
 | `scenekit.js` | Reading, checking and playing scenes; tiers and Settings; the scene gates |
 | `preview.html` | The scene preview page |
 | `WRITING-SCENES.md` | How to write scenes and your authored.js |

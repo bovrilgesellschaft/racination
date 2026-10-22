@@ -22,17 +22,18 @@
   var EV = window.RACINATION_EVENTS;
   var IN = window.RACINATION_INTIMACY;
   var SK = window.RACINATION_SCENEKIT;
+  var WK = window.RACINATION_WORKING;
 
   var SAVE_KEY = "racination.save.v1";
   var ADULT_KEY = "racination.adult";
   var TESTING_KEY = "racination.testing";
-  var SAVE_VERSION = 8;
+  var SAVE_VERSION = 9;
 
   var screenEl = document.getElementById("screen");
   var borderEl = document.getElementById("border");
   var fileInput = document.getElementById("import-file");
 
-  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !EV || !IN || !SK || !DATA.scenekit || !DATA.consent || !DATA.romanceEvents || !DATA.events || !DATA.letters || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
+  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !EV || !IN || !SK || !WK || !DATA.working || !DATA.ephemeris || !DATA.workingEvents || !DATA.scenekit || !DATA.consent || !DATA.romanceEvents || !DATA.events || !DATA.letters || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
     screenEl.innerHTML = '<p class="warn">One of the game’s files is missing or has a mistake in it, '
       + "so the game cannot start. If you have just edited a file in the data folder, check it for a missing "
       + "comma or quotation mark.</p>";
@@ -168,6 +169,7 @@
   H.setRandom(rand);
   IN.setRandom(rand);
   SK.setRandom(rand);
+  WK.setRandom(rand);
 
   function pick(list, avoid) {
     if (!list || !list.length) return "";
@@ -224,6 +226,7 @@
     EV.ensureEvents(state);
     IN.ensure(state);
     state.scenes = { current: null };
+    WK.ensure(state);
     return state;
   }
 
@@ -271,6 +274,9 @@
     // Milestone 7: the Scene Kit.
     if (!s.scenes) s.scenes = { current: null };
     if (s.version < 8) s.version = 8;
+    // Milestone 8: the Working, and Visualisation for everyone.
+    WK.ensure(s);
+    if (s.version < 9) s.version = 9;
     if (!Array.isArray(s.departed)) s.departed = [];
     if (typeof s.nextId !== "number") s.nextId = s.residents.length + 1;
     return s;
@@ -383,6 +389,7 @@
     DR.wearWeek(state, season).forEach(function (e) { events.push(e); });
     EV.weekly(state);
     IN.weekly(state).forEach(function (e) { events.push(e); });
+    WK.weekly(state).forEach(function (e) { events.push(e); });
     EV.takeNotes(state).forEach(function (n) { events.unshift(n.result); });
 
     var people = state.residents.map(function (r) {
@@ -580,6 +587,7 @@
       + (state.mistress ? '<button data-act="mistress">Mistress</button>' : "")
       + '<button data-act="household">Household</button>'
       + (state.romance ? '<button data-act="bonds">Bonds</button>' : "")
+      + (state.working && state.working.discovered ? '<button data-act="calendar">Calendar</button>' : "")
       + '<button data-act="settings">Settings</button>'
       + (state.house ? '<button data-act="house">House</button>' : "")
       + (state.house ? '<button data-act="rules">Rules</button>' : "")
@@ -1266,6 +1274,7 @@
       + '<div class="pane">'
       + (rite ? '<p>A hearing is open. <button data-act="open-rite">Return to it</button></p>' : "")
       + (petitions || '<p class="small note">No one has petitioned this week.</p>') + chargeForm + "</div>"
+      + workingSection()
       + (guests ? '<h2 class="band magenta">This week’s paying guests</h2><div class="pane">' + guests
         + '<p class="small note">A guest who asked for the rite will usually love it, and say so. A guest who never asked may agree because she cannot think how to refuse.</p></div>' : "")
       + '<div class="actions"><button class="primary" data-act="from-evenings" data-primary>'
@@ -1420,7 +1429,7 @@
       goView("rite");
       return;
     }
-    if (a.kind === "guest") setFlash(T(a.text));
+    if (a.kind === "guest" || a.kind === "working") setFlash(T(a.text));
     saveGame();
     goView("game");
   }
@@ -1514,6 +1523,101 @@
       + "<p>Please confirm that you are 18 or over and that you want it switched on. You can switch it off again in Settings.</p></div>"
       + '<div class="actions"><button class="danger" data-act="author-yes">I am 18 or over: switch it on</button>'
       + '<button data-act="settings" data-primary>Back</button></div>'
+      + "</div>";
+  }
+
+  /* ---------- The Working: the Evenings section and the Calendar (Milestone 8) ---------- */
+
+  var workingDraft = {};
+  var calMonth = null;
+
+  function workingSection() {
+    var w = state.working;
+    if (!w || !w.discovered) return "";
+    var head = '<h2 class="band black">The Working</h2><div class="pane">';
+    var foot = '<p class="small"><button class="tiny" data-act="calendar">The calendar of the Ladies</button></p></div>';
+    var why = WK.canPlan(state);
+    if (why) return head + "<p>" + esc(why) + "</p>" + foot;
+    var monday = mondayOf(state.week).getTime();
+    var wins = WK.windowsBetween(monday, 7);
+    var cps = WK.couples(state);
+    if (!wins.length) return head + "<p>No Lady’s window falls within the house’s hours this week.</p>" + foot;
+    if (!cps.length) return head + "<p>There is no courting or bonded couple to keep a Working.</p>" + foot;
+    // A fresh plan each week: in particular, "Both women know what the Working is for" is ticked again.
+    if (workingDraft.week !== state.week) workingDraft = { week: state.week };
+    var d = workingDraft;
+    if (!wins.some(function (x) { return x.key === d.window; })) d.window = wins[0].key;
+    var win = wins.filter(function (x) { return x.key === d.window; })[0];
+    var L = WK.lady(win.lady);
+    var sites = WK.sitesOpen(state);
+    if (!sites.some(function (s) { return s.id === d.site; })) d.site = sites[0].id;
+    if (!cps.some(function (c) { return c.key === d.couple; })) d.couple = cps[0].key;
+    if (L.phrases.indexOf(d.phrase) < 0) d.phrase = L.phrases[0];
+    if (L.images.indexOf(d.image) < 0) d.image = L.images[0];
+    if (d.informed == null) d.informed = true;
+    var S = WK.site(d.site);
+    function opts(list, cur, val, lab) {
+      return list.map(function (x) { var v = val(x); return '<option value="' + esc(v) + '"' + (v === cur ? " selected" : "") + ">" + esc(lab(x)) + "</option>"; }).join("");
+    }
+    return head
+      + '<p class="small note">' + esc(capital(L.name)) + " is the Lady of " + esc(L.domain) + ". "
+      + (win.mode === "build" ? "At her rising, a Working builds." : "At her setting, a Working banishes.") + "</p>"
+      + '<div class="create">'
+      + '<label class="field"><span>The window</span><select class="wk" data-wk="window">' + opts(wins, d.window, function (x) { return x.key; }, WK.windowLabel) + "</select></label>"
+      + '<label class="field"><span>The site</span><select class="wk" data-wk="site">' + opts(sites, d.site, function (x) { return x.id; }, function (x) { return capital(x.name) + (x.cost ? " (£" + x.cost + ")" : ""); }) + "</select></label>"
+      + '<p class="small note">' + esc(S.note) + "</p>"
+      + '<label class="field"><span>The couple</span><select class="wk" data-wk="couple">' + opts(cps, d.couple, function (x) { return x.key; }, function (x) { return x.label; }) + "</select></label>"
+      + '<label class="field"><span>The phrase</span><select class="wk" data-wk="phrase">' + opts(L.phrases, d.phrase, function (x) { return x; }, function (x) { return "‘" + x + "’"; }) + "</select></label>"
+      + '<label class="field"><span>The held image</span><select class="wk" data-wk="image">' + opts(L.images, d.image, function (x) { return x; }, capital) + "</select></label>"
+      + '<label class="check"><input type="checkbox" class="wk" data-wk="informed"' + (d.informed ? " checked" : "") + "> Both women know what the Working is for</label>"
+      + "</div>"
+      + '<div class="actions"><button data-act="keep-working">Keep the Working</button></div>'
+      + '<p class="small note">Each woman is asked, and must want it. What a Working does is never confirmed.</p>'
+      + foot;
+  }
+
+  function viewCalendar() {
+    var w = state.working;
+    var Wd = WK.data;
+    var now = mondayOf(Math.min(state.week, TOTAL_WEEKS - 1));
+    if (!calMonth) calMonth = { y: now.getUTCFullYear(), m: now.getUTCMonth() };
+    var wins = WK.windowsInMonth(calMonth.y, calMonth.m);
+    var t0 = now.getTime(), t1 = t0 + 7 * DAY;
+    var rows = wins.map(function (x) {
+      var cur = x.date >= t0 && x.date < t1;
+      return "<tr" + (cur ? ' class="current"' : "") + "><td>" + esc(WK.windowLabel(x)) + "</td></tr>";
+    }).join("");
+    var stances = Object.keys(Wd.stances).map(function (k) {
+      var st = Wd.stances[k];
+      var isCur = w.stance === k;
+      return '<div class="rule-option' + (isCur ? " current" : "") + '"><button data-act="set-stance" data-stance="' + k + '"' + (isCur ? " disabled" : "") + ">"
+        + esc(st.label) + '</button><span class="small">' + esc(st.note) + ' <span class="note">' + (isCur ? "In force" : "Costs " + Wd.stanceChangeCost + " Authority") + "</span></span></div>";
+    }).join("");
+    var ladies = Wd.ladies.map(function (L) {
+      return "<tr><td><strong>" + esc(capital(L.name)) + '</strong><br><span class="small">' + esc(capital(L.planet)) + " · " + esc(DAYS[L.day]) + "</span></td><td>" + esc(capital(L.domain)) + "</td></tr>";
+    }).join("");
+    var mname = MONTHS[calMonth.m] + " " + calMonth.y;
+    var first = calMonth.y === 1983 && calMonth.m === 0, last = calMonth.y === 1989 && calMonth.m === 11;
+    var tools = testing ? '<div class="testing"><p class="small">Testing: Charge ' + Math.round(w.charge) + ", Workings kept " + w.count + ", sinister " + w.sinister + ", seen " + w.exposed
+      + ". Nudges: " + esc(w.influences.map(function (i) { return i.lady + " " + i.mode + " " + Math.round(i.strength * 100) / 100 + " (" + i.weeks + "w)"; }).join("; ") || "none") + ".</p></div>" : "";
+    return statusBar() + takeFlash()
+      + '<div class="body">'
+      + '<h2 class="band black">The Calendar of the Ladies</h2>'
+      + '<p class="dateline">Windows on each Lady’s own day, between dusk and dawn, on the house’s clock</p>'
+      + '<div class="actions"><button data-act="cal-month" data-delta="-1"' + (first ? " disabled" : "") + ">Earlier</button>"
+      + "<strong> " + esc(mname) + " </strong>"
+      + '<button data-act="cal-month" data-delta="1"' + (last ? " disabled" : "") + ">Later</button></div>"
+      + '<div class="book" style="border-top:3px double var(--blue)"><table><tbody>' + (rows || "<tr><td>No windows this month.</td></tr>") + "</tbody></table></div>"
+      + '<p class="small note">Highlighted: this week’s windows. A Working is planned on the Evenings page.</p>'
+      + '<div class="pane create"><fieldset class="create-section"><legend>The Mistress’s stance</legend>' + stances + "</fieldset>"
+      + '<fieldset class="create-section"><legend>The house</legend>'
+      + "<p>" + esc(Wd.readings[w.reading] || Wd.readings.undecided) + "</p>"
+      + "<p>The Chamber " + (w.chamberRestUntil > state.week ? "is locked, and resting." : "feels " + esc(WK.chargeWord(state)) + ".") + "</p>"
+      + "</fieldset></div>"
+      + '<h2 class="band blue">The Seven Ladies</h2>'
+      + '<div class="book" style="border-top:3px double var(--blue)"><table><thead><tr><th>Lady</th><th>Domain</th></tr></thead><tbody>' + ladies + "</tbody></table></div>"
+      + tools
+      + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div>'
       + "</div>";
   }
 
@@ -1986,6 +2090,7 @@
       case "settings": html = viewSettings(); break;
       case "author-confirm": html = viewAuthorConfirm(); break;
       case "bonds": html = viewBonds(); break;
+      case "calendar": html = viewCalendar(); break;
       case "mistress": html = state.mistress ? viewMistress() : viewCreate(); break;
       case "game":
         if (!state.mistress) html = viewCreate();
@@ -2191,6 +2296,25 @@
           saveGame(); goView("scene"); break;
         } else { saveGame(); setFlash(gr.text); }
         rerenderKeepingPlace(); break;
+      case "calendar": calMonth = null; goView("calendar"); break;
+      case "cal-month":
+        calMonth.m += Number(el.getAttribute("data-delta"));
+        if (calMonth.m < 0) { calMonth.m = 11; calMonth.y--; }
+        if (calMonth.m > 11) { calMonth.m = 0; calMonth.y++; }
+        rerenderKeepingPlace(); break;
+      case "set-stance":
+        var ss = WK.changeStance(state, el.getAttribute("data-stance"));
+        if (ss) setFlash(ss, true); else { saveGame(); setFlash("The Mistress’s stance on the Working has changed."); }
+        rerenderKeepingPlace(); break;
+      case "keep-working":
+        var wmon = mondayOf(state.week);
+        var kw = WK.keep(state, workingDraft, wmon.getTime(), seasonOf(wmon));
+        if (!kw.ok) { setFlash(kw.why, true); rerenderKeepingPlace(); break; }
+        if (kw.scene && SK.start(state, { trigger: "working", params: kw.scene.params, cast: kw.scene.cast, free: kw.scene.free,
+          toggle: "romance", after: { kind: "working", text: kw.text } })) {
+          saveGame(); goView("scene"); break;
+        }
+        saveGame(); setFlash(T(kw.text)); rerenderKeepingPlace(); break;
       case "court-scene":
         var cs = courtshipScene(Number(el.getAttribute("data-a")), Number(el.getAttribute("data-b")), el.getAttribute("data-kind"));
         if (cs) { saveGame(); goView("scene"); }
@@ -2396,6 +2520,15 @@
     var y = window.scrollY;
     render();
     window.scrollTo(0, y);
+  });
+
+  // The Working's plan on the Evenings page.
+  document.addEventListener("change", function (ev) {
+    var el = ev.target;
+    if (!el || !el.classList || !el.classList.contains("wk")) return;
+    var k = el.getAttribute("data-wk");
+    workingDraft[k] = k === "informed" ? el.checked : el.value;
+    rerenderKeepingPlace();
   });
 
   // The Evenings: each woman's register.

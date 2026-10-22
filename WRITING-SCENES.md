@@ -78,9 +78,9 @@ Then add `"my-scene.js"` to the list in `scenes/list.js`.
 | `courtship(with = resident)` | "Their evening", for two residents courting | `partner`, `beloved` |
 | `courtship(with = mistress)` | "Your evening with her" | `partner`, `mistress` (and `beloved` is the Mistress too) |
 | `bonding` | "Their bonding night", the week after a bonding | `partner`, `beloved` (who may be the Mistress) |
-| `working(...)` | From Milestone 8 | |
+| `working(...)` | A Working, kept from the Evenings page | `partner`, `beloved` (who may be the Mistress) |
 
-The things in brackets narrow a trigger. You can leave them out, or add others: `rite` also knows `measure` (token, formal, severe) and `presider` (mistress, housekeeper); `courtship` and `bonding` know `with` and `stage` (understanding, attachment, devotion, bonded); `guestrite` knows `interest` (curious, wants). When several scenes fit a moment, the game prefers the one that fits most exactly, and picks at random among equals.
+The things in brackets narrow a trigger. You can leave them out, or add others: `rite` also knows `measure` (token, formal, severe) and `presider` (mistress, housekeeper); `courtship` and `bonding` know `with` and `stage` (understanding, attachment, devotion, bonded); `guestrite` knows `interest` (curious, wants); `working` knows `planet` (sun, moon, mercury, venus, mars, jupiter, saturn), `site` (chamber, uffington, wayland, rollright, wychwood), `outdoor` (yes, no), `mode` (build, banish) and `with` (resident, mistress). When several scenes fit a moment, the game prefers the one that fits most exactly, and picks at random among equals.
 
 ### Beats and choices
 
@@ -98,6 +98,7 @@ You cannot remove these, and do not need to write them:
 
 - **The stop route.** Every beat gets a "Stop here, and sit with her" button that goes straight to aftercare.
 - **Her word.** If a rite goes past a woman's limit, her house word arrives at the next beat and the scene goes to aftercare.
+- **The Working's own gate.** A Working where a woman was not told what it is for plays no scene at all: it is the harm path.
 - **The gates.** A scene only plays if everyone in it is an adult of 24 or over and the house is not in the failure state. If any woman's yes was not freely given, the scene takes the fade path: Gaslight text only, and never your Author text. The house also draws the curtain now and then on a scene where all is well, so a faded scene is never, by itself, proof of anything. Text that frames anything in terms of school, childhood or youth is withheld at every tier.
 
 ## Tokens
@@ -110,7 +111,8 @@ You cannot remove these, and do not need to write them:
 | the same for `{beloved...}`, `{presider...}`, `{guest...}` | (a guest also has `{guest.job}` and `{guest.town}`) |
 | `{mistress.name}`, `{mistress.voice}`, `{mistress.scent}`, `{mistress.hair}` and the rest | The Mistress |
 | `{room}`, `{season}`, `{house}` | The room, the season, the house's name |
-| `{planet}` | From Milestone 8 |
+| `{planet}`, `{lady}` | In a Working: the planet ("Venus") and the house's name for her ("the Evening Lady") |
+| `{phrase}`, `{image}` | In a Working: the phrase chosen, and the held image of what it is for |
 
 ## Your authored.js
 

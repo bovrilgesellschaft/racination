@@ -195,6 +195,20 @@
     }
   }
 
+  // A harm done to her (Milestone 8: the uninformed Working). Counted, felt, and it may come out later.
+  function markHarm(state, r, key, area) {
+    mark(state, key);
+    if (!r) return;
+    adjust(r, C.outcomes.harm);
+    adjust(r, { doubt: C.beyondLimitHarm });
+    r.harmDependency = (r.harmDependency || 0) + (C.outcomes.harm.dependency || 0);
+    r.extractedAreas = r.extractedAreas || {};
+    r.extractedAreas[area] = true;
+    if (rand() < 0.6 && state.events) {
+      state.events.followUps.push({ id: "truth-confession", week: state.week + 2 + Math.floor(rand() * 5), resident: r.id });
+    }
+  }
+
   /* ============================================================
      The Evenings
      ============================================================ */
@@ -938,6 +952,8 @@
     isExtracted: isExtracted,
     isFree: isFree,
     trimRite: trimRite,
+    markHarm: markHarm,
+    extracted: extracted,
     addProgress: addProgress,
     courtshipBetween: courtshipBetween,
     stageOf: stageOf

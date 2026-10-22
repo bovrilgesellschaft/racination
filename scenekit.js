@@ -269,7 +269,6 @@
       if (!s.participants.length) problems.push(w + ": it has no participants line.");
       if (!s.trigger) problems.push(w + ": it has no trigger line, so it can never play.");
       else if (TRIGGERS.indexOf(s.trigger.name) < 0) problems.push(w + ": its trigger “" + s.trigger.name + "” is not one the game knows (" + TRIGGERS.join(", ") + ").");
-      else if (s.trigger.name === "working") notes.push(w + ": Working scenes will play from Milestone 8.");
       Object.keys(s.outcome).forEach(function (k) {
         if (["racination", "devotion", "doubt", "bond", "charge"].indexOf(k) < 0) problems.push(w + ": its outcome mentions “" + k + "”, which the game does not know.");
       });
@@ -553,7 +552,10 @@
     t.houseword = partner && partner.consent ? partner.consent.houseWord : "";
     t.room = run.params.room || s.room || "the Study";
     t.season = run.params.season || "";
-    t.planet = run.params.planet || "";
+    t.planet = run.params.planetName || run.params.planet || "";
+    t.lady = run.params.lady || "";
+    t.phrase = run.params.phrase || "";
+    t.image = run.params.image || "";
     t.house = (D.house && D.house.name) || "the house";
     var out = String(text || "").replace(/\{(\w+(?:\.\w+)?)\}/g, function (m, k) { return t[k] != null ? t[k] : m; });
     var MI = window.RACINATION_MISTRESS;

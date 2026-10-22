@@ -26,6 +26,7 @@
 
   <script src="data/house.js"></script>
   <script src="data/scenekit.js"></script>
+  <script src="data/working.js"></script>
   <script src="scenes/list.js"></script>
   <script src="scenekit.js"></script>
   <script>
@@ -64,7 +65,13 @@
       t.houseword = SAMPLE.partner.houseword;
       t.room = (s && s.room) || "the Study";
       t.season = ui.params.season || "spring";
-      t.planet = ui.params.planet || "Venus";
+      var WD = window.RACINATION_DATA.working;
+      var ld = null;
+      if (WD) WD.ladies.forEach(function (x) { if (x.id === (ui.params.planet || "venus")) ld = x; });
+      t.planet = ld ? ld.planet : "Venus";
+      t.lady = ld ? ld.name : "the Evening Lady";
+      t.phrase = ld ? ld.phrases[0] : "Rose at the window, rose at the door";
+      t.image = ld ? ld.images[0] : "the guest book full to the end of the season";
       t.house = (window.RACINATION_DATA.house && window.RACINATION_DATA.house.name) || "the house";
       return String(text || "").replace(/\{(\w+(?:\.\w+)?)\}/g, function (m, k) { return t[k] != null ? t[k] : m; });
     }
