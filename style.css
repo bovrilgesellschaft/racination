@@ -367,6 +367,125 @@ button.danger { background: var(--red); }
   color: var(--bwhite);
 }
 
+/* ---------- The household (Milestone 2) ---------- */
+
+.tag {
+  display: inline-block;
+  font-size: 0.8em;
+  padding: 0 0.35em;
+  vertical-align: 0.1em;
+}
+.tag.blonde   { background: var(--byellow); color: var(--black); }
+.tag.brunette { background: var(--red); color: var(--bwhite); }
+.tag.period   { background: var(--green); color: var(--black); }
+.tag.pit      { background: var(--magenta); color: var(--bwhite); }
+
+button.link {
+  background: none;
+  color: var(--blue);
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+button.link:hover, button.link:focus-visible {
+  background: var(--byellow);
+  color: var(--black);
+}
+button.tiny { font-size: 0.85em; padding: 0.05em 0.5em; background: var(--white); color: var(--blue); outline: 1px solid var(--blue); }
+
+.card {
+  border-bottom: 1px solid var(--cyan);
+  padding: 0.4em 0 0.6em;
+}
+.card:last-child { border-bottom: 0; }
+.card p { margin: 0.1em 0 0.3em; }
+.card-head { font-size: 1.1em; }
+
+.meter {
+  display: grid;
+  grid-template-columns: 6.2em 1fr 4.2em;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0.1em 0;
+}
+.mlabel { font-size: 0.9em; }
+.mbar {
+  height: 0.7em;
+  background: var(--white);
+  outline: 1px solid var(--black);
+  position: relative;
+}
+.mbar span { display: block; height: 100%; }
+.meter.rac .mbar span { background: var(--green); }
+.meter.dev .mbar span { background: var(--blue); }
+.meter.dbt .mbar span { background: var(--red); }
+.mval { text-align: right; white-space: nowrap; font-size: 0.9em; }
+.dup   { color: #007a00; }
+.ddown { color: var(--red); }
+.d0    { color: #6b6b6b; }
+
+.rota-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.2em 1em;
+  padding: 0.35em 0;
+  border-bottom: 1px solid var(--cyan);
+}
+.rota-row:last-of-type { border-bottom: 0; }
+.rota-duty { display: flex; flex-direction: column; align-items: flex-end; }
+
+select.duty {
+  font-family: var(--text);
+  font-size: 1em;
+  background: var(--black);
+  color: var(--bwhite);
+  border: 0;
+  border-radius: 0;
+  padding: 0.1em 0.4em;
+  max-width: 100%;
+}
+select.duty:focus-visible { outline: 2px solid var(--byellow); }
+
+details.notes { border-top: 3px double var(--blue); }
+details.notes summary { cursor: pointer; color: var(--blue); }
+details.notes ul { margin: 0.4em 0 0; padding-left: 1.1em; }
+
+ul.plain { margin: 0.2em 0 0.6em; padding-left: 1.1em; }
+
+.pips { color: var(--blue); letter-spacing: 0.05em; }
+.pips .off { color: #9a9a9a; }
+
+textarea.portrait {
+  width: 100%;
+  font-family: var(--text);
+  font-size: 0.9em;
+  line-height: 1.2;
+  background: var(--white);
+  color: var(--black);
+  border: 1px solid var(--blue);
+  border-radius: 0;
+  padding: 0.4em;
+  resize: vertical;
+}
+
+.testing {
+  border: 2px dashed var(--magenta);
+  padding: 0.4em 0.6em;
+  margin: 0.8em 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+  align-items: center;
+}
+.testing p { width: 100%; margin: 0; color: var(--magenta); }
+.testing button { font-size: 0.85em; padding: 0.05em 0.5em; }
+
+@media (max-width: 480px) {
+  .rota-duty { align-items: flex-start; width: 100%; }
+  .meter { grid-template-columns: 5.6em 1fr 3.8em; }
+}
+
 /* ---------- Small screens ---------- */
 
 @media (max-width: 480px) {
