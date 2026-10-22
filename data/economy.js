@@ -136,7 +136,7 @@ window.RACINATION_DATA.economy = {
     moneyWorry: 1.0,         // when money is below the worry line
     debt: 2.0,               // when money is below nothing
     perShabbyRoom: 0.25,
-    perComputing: 0.8,       // each resident in the Computing Room
+    perComputing: 0.4,       // each resident in the Computing Room (halved in Milestone 9)
     // Taken off each week:
     periodCleanses: 1.6,     // × the house's average Period ÷ 100
     perDevotions: 0.3,       // each resident on Devotions

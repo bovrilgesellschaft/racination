@@ -23,17 +23,18 @@
   var IN = window.RACINATION_INTIMACY;
   var SK = window.RACINATION_SCENEKIT;
   var WK = window.RACINATION_WORKING;
+  var CP = window.RACINATION_COMPUTING;
 
   var SAVE_KEY = "racination.save.v1";
   var ADULT_KEY = "racination.adult";
   var TESTING_KEY = "racination.testing";
-  var SAVE_VERSION = 9;
+  var SAVE_VERSION = 10;
 
   var screenEl = document.getElementById("screen");
   var borderEl = document.getElementById("border");
   var fileInput = document.getElementById("import-file");
 
-  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !EV || !IN || !SK || !WK || !DATA.working || !DATA.ephemeris || !DATA.workingEvents || !DATA.scenekit || !DATA.consent || !DATA.romanceEvents || !DATA.events || !DATA.letters || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
+  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !EV || !IN || !SK || !WK || !CP || !DATA.computing || !DATA.computingEvents || !DATA.working || !DATA.ephemeris || !DATA.workingEvents || !DATA.scenekit || !DATA.consent || !DATA.romanceEvents || !DATA.events || !DATA.letters || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
     screenEl.innerHTML = '<p class="warn">One of the game’s files is missing or has a mistake in it, '
       + "so the game cannot start. If you have just edited a file in the data folder, check it for a missing "
       + "comma or quotation mark.</p>";
@@ -170,6 +171,7 @@
   IN.setRandom(rand);
   SK.setRandom(rand);
   WK.setRandom(rand);
+  CP.setRandom(rand);
 
   function pick(list, avoid) {
     if (!list || !list.length) return "";
@@ -227,6 +229,7 @@
     IN.ensure(state);
     state.scenes = { current: null };
     WK.ensure(state);
+    CP.ensure(state);
     return state;
   }
 
@@ -277,6 +280,9 @@
     // Milestone 8: the Working, and Visualisation for everyone.
     WK.ensure(s);
     if (s.version < 9) s.version = 9;
+    // Milestone 9: the Computing Room.
+    CP.ensure(s);
+    if (s.version < 10) s.version = 10;
     if (!Array.isArray(s.departed)) s.departed = [];
     if (typeof s.nextId !== "number") s.nextId = s.residents.length + 1;
     return s;
@@ -356,6 +362,8 @@
 
     // The Sewing Room's week comes first: what it does not spend on the house's clothes, it sells.
     var sewingEvents = DR.sewingWeek(state);
+    // The Computing Room's week: development, releases and sales (Milestone 9).
+    CP.weekly(state, mondayOf(state.week).getUTCFullYear()).forEach(function (e) { sewingEvents.push(e); });
 
     // The week's accounts. Repairs, restorations, cloth and purchases were paid when ordered.
     var lines = EC.weekAccounts(state, season);
@@ -588,6 +596,7 @@
       + '<button data-act="household">Household</button>'
       + (state.romance ? '<button data-act="bonds">Bonds</button>' : "")
       + (state.working && state.working.discovered ? '<button data-act="calendar">Calendar</button>' : "")
+      + (state.computing ? '<button data-act="computing">Computing</button>' : "")
       + '<button data-act="settings">Settings</button>'
       + (state.house ? '<button data-act="house">House</button>' : "")
       + (state.house ? '<button data-act="rules">Rules</button>' : "")
@@ -1621,6 +1630,74 @@
       + "</div>";
   }
 
+  /* ---------- The Computing Room (Milestone 9) ---------- */
+
+  function viewComputing() {
+    var cs = state.computing;
+    var Cd = CP.data;
+    var year = mondayOf(Math.min(state.week, TOTAL_WEEKS - 1)).getUTCFullYear();
+    var tm = CP.team(state);
+    var teamHTML = tm.length
+      ? '<ul class="plain">' + tm.map(function (r) {
+          return "<li>" + residentLink(r) + ' <span class="small note">Programming ' + (r.skills.programming || 0) + ", Letters " + (r.skills.letters || 0) + "</span></li>";
+        }).join("") + "</ul>"
+      : "<p>Nobody is on Computing Room duty. Put up to three women with Programming 2 or more on it in the rota.</p>";
+
+    var p = cs.project, dev;
+    if (!p) {
+      dev = '<div class="create">'
+        + '<label class="field"><span>Title</span><input id="cp-title" maxlength="40" placeholder="The Haunted Rectory"></label>'
+        + '<label class="field"><span>Kind</span><select id="cp-type">' + Cd.types.map(function (t) { return '<option value="' + t.id + '">' + esc(t.label + ": " + t.note) + "</option>"; }).join("") + "</select></label>"
+        + '<label class="field"><span>Scope</span><select id="cp-scope">' + Cd.scopes.map(function (s) { return '<option value="' + s.id + '">' + esc(s.label + ": " + s.note) + "</option>"; }).join("") + "</select></label>"
+        + "</div>"
+        + '<div class="actions"><button data-act="cp-pitch">Begin work on it</button></div>';
+    } else if (!p.finished) {
+      var pct = Math.min(100, Math.round(p.progress / p.work * 100));
+      dev = "<p><strong>‘" + esc(p.title) + "’</strong>: " + esc(CP.type(p.type).label.toLowerCase()) + ", " + esc(CP.scope(p.scope).label.toLowerCase()) + ".</p>"
+        + meter("Written", pct, null, "per")
+        + '<div class="actions"><button data-act="cp-abandon">Abandon it</button></div>';
+    } else {
+      dev = "<p><strong>‘" + esc(p.title) + "’</strong> is finished. Order a cassette run to release it; review copies go out with it.</p>"
+        + runPicker("project", year)
+        + '<div class="actions"><button data-act="cp-abandon">Abandon it</button></div>';
+    }
+
+    var selling = cs.games.filter(function (g) { return g.status === "selling" || g.status === "pressing"; });
+    var sellingHTML = selling.length ? selling.map(function (g) {
+      if (g.status === "pressing") return '<div class="event-card"><h3 class="event-title">‘' + esc(g.title) + "’</h3><p>At the duplicators. " + g.stock + " cassettes ordered; the review is due on Sunday.</p></div>";
+      return '<div class="event-card"><h3 class="event-title">‘' + esc(g.title) + "’</h3>"
+        + "<p>" + esc(g.magazine) + ": " + g.score + " out of 10. “" + esc(g.review) + "”</p>"
+        + '<p class="small">Week ' + g.weeksOnSale + " on sale at £" + g.price.toFixed(2) + ". Sold last week: " + g.lastSold + ". Sold in all: " + g.sold
+        + ". In stock: " + g.stock + ". Earned: " + money(pence(g.revenue)) + ".</p>"
+        + runPicker(g.id, year)
+        + '<div class="actions"><button data-act="cp-advert" data-game="' + g.id + '"' + (g.advertWeek === state.week ? " disabled" : "") + ">"
+        + (g.advertWeek === state.week ? "Advertised this week" : "Advertise this week (" + money(pence(Cd.advert.cost)) + ")") + "</button></div></div>";
+    }).join("") : "<p>Nothing on sale.</p>";
+
+    var done = cs.games.filter(function (g) { return g.status === "done"; });
+    var cat = done.length ? '<div class="book" style="border-top:3px double var(--blue)"><table><thead><tr><th>Title</th><th class="num">Score</th><th class="num">Sold</th><th class="num">Earned</th></tr></thead><tbody>'
+      + done.map(function (g) { return "<tr><td>‘" + esc(g.title) + "’ (" + g.year + ')</td><td class="num">' + g.score + '</td><td class="num">' + g.sold + '</td><td class="num">' + money(pence(g.revenue)) + "</td></tr>"; }).join("")
+      + "</tbody></table></div>" : "";
+
+    return statusBar() + takeFlash()
+      + '<div class="body">'
+      + '<h2 class="band blue">The Computing Room</h2>'
+      + '<p class="dateline">Hesperis Software: games on cassette for the home computer</p>'
+      + '<div class="pane"><p class="small note">The one room in the house the twentieth century is allowed into, and it shows. Games earn money and raise the Pit.</p>'
+      + "<p><strong>The team</strong></p>" + teamHTML + "</div>"
+      + '<h2 class="band magenta">In development</h2><div class="pane">' + dev + "</div>"
+      + '<h2 class="band black">On sale</h2><div class="pane">' + sellingHTML + "</div>"
+      + (cat ? '<h2 class="band blue">The back catalogue</h2>' + cat : "")
+      + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div>'
+      + "</div>";
+  }
+
+  function runPicker(id, year) {
+    return '<div class="create"><label class="field"><span>Cassette run</span><select id="cp-run-' + id + '">'
+      + CP.data.runs.map(function (n) { return '<option value="' + n + '">' + n + " cassettes, " + money(pence(CP.runCost(year, n))) + "</option>"; }).join("")
+      + '</select></label></div><div class="actions"><button data-act="cp-order" data-game="' + id + '">Order the run</button></div>';
+  }
+
   /* ---------- The house: rooms ---------- */
 
   function viewHouse() {
@@ -2091,6 +2168,7 @@
       case "author-confirm": html = viewAuthorConfirm(); break;
       case "bonds": html = viewBonds(); break;
       case "calendar": html = viewCalendar(); break;
+      case "computing": html = viewComputing(); break;
       case "mistress": html = state.mistress ? viewMistress() : viewCreate(); break;
       case "game":
         if (!state.mistress) html = viewCreate();
@@ -2297,6 +2375,25 @@
         } else { saveGame(); setFlash(gr.text); }
         rerenderKeepingPlace(); break;
       case "calendar": calMonth = null; goView("calendar"); break;
+      case "computing": goView("computing"); break;
+      case "cp-pitch":
+        var cpt = document.getElementById("cp-title"), cpy = document.getElementById("cp-type"), cps = document.getElementById("cp-scope");
+        var pr = CP.pitch(state, cpt ? cpt.value : "", cpy ? cpy.value : "", cps ? cps.value : "");
+        if (!pr.ok) setFlash(pr.why, true); else { saveGame(); setFlash(pr.text); }
+        rerenderKeepingPlace(); break;
+      case "cp-abandon":
+        CP.abandon(state); saveGame(); setFlash("The game has been abandoned. The cassettes of notes go in the bottom drawer.");
+        rerenderKeepingPlace(); break;
+      case "cp-order":
+        var gid = el.getAttribute("data-game");
+        var rsel = document.getElementById("cp-run-" + gid);
+        var od2 = CP.order(state, gid, Number(rsel ? rsel.value : 0), mondayOf(state.week).getUTCFullYear());
+        if (!od2.ok) setFlash(od2.why, true); else { saveGame(); setFlash(od2.text); }
+        rerenderKeepingPlace(); break;
+      case "cp-advert":
+        var ad = CP.advertise(state, el.getAttribute("data-game"));
+        if (!ad.ok) setFlash(ad.why, true); else { saveGame(); setFlash(ad.text); }
+        rerenderKeepingPlace(); break;
       case "cal-month":
         calMonth.m += Number(el.getAttribute("data-delta"));
         if (calMonth.m < 0) { calMonth.m = 11; calMonth.y--; }

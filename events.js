@@ -35,7 +35,8 @@
       .concat(D.events || [])
       .concat((D.stories || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }))
       .concat((D.romanceEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }))
-      .concat((D.workingEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }));
+      .concat((D.workingEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }))
+      .concat((D.computingEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }));
   }
 
   function byId(id) {
@@ -144,6 +145,10 @@
     if (w.working) {
       var WK = window.RACINATION_WORKING;
       if (!WK || !WK.conditionOK(state, w.working)) return null;
+    }
+    if (w.computing) {
+      var CPc = window.RACINATION_COMPUTING;
+      if (!CPc || !CPc.conditionOK(state, w.computing)) return null;
     }
     var onlyIds = null;
     if (w.sameCourtship) {
@@ -453,6 +458,10 @@
     if (fx.working) {
       var WK2 = window.RACINATION_WORKING;
       if (WK2) WK2.applyEffects(state, fx.working);
+    }
+    if (fx.computing) {
+      var CPe = window.RACINATION_COMPUTING;
+      if (CPe) CPe.applyEffects(state, fx.computing);
     }
     if (fx.followUp) {
       asList(fx.followUp).forEach(function (f) {

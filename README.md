@@ -3,16 +3,13 @@
 A household-management game of devotion, discipline and the Pit, 1983–1989.
 Adults only (18+).
 
-Current build: **Milestone 8, the Working**. The house's private current of
-erotic planetary magic, hidden at the start of every run: found through a
-notebook in the Library or a senior resident's confidence, and embraced,
-tolerated or forbidden. The seven Ladies' windows come from a true ephemeris
-for 1983–89 over the downs (`data/ephemeris.js`), shown on the **Calendar**. A
-Working is planned on the Evenings page, kept in the Chamber or out on the land,
-and plays as a scene. What it does is never confirmed: the ledger records only
-coincidences. With it come Visualisation, the Chamber's Charge and its
-hauntings, the Mirror and Polar readings, being seen on the downs, and the
-sinister current. Milestones 1 to 7 are all still here.
+Current build: **Milestone 9, the Computing Room**. Hesperis Software writes
+games for the home computer and sells them on cassette: pitch a title, put up
+to three women on Computing Room duty, order a cassette run when it is
+finished, advertise, and watch the review and the sales. The market changes
+over the decade, from the boom of 1983–85 to budget games at £1.99 and a
+fading trade by 1989. A hit brings the computing press and may turn its
+writer's head. Milestones 1 to 8 are all still here.
 
 ## How to play it
 
@@ -56,6 +53,9 @@ Everything in the `data` folder is for editing:
 - `data/glossary.js`: the house's language and when each term unlocks.
 - `data/consent.js`: the consent model, the Evenings, courtship, the rite and
   its lines, paying guests' rites, and the failure-state ladder.
+- `data/computing.js`: the Computing Room's figures: kinds of game, quality,
+  cassette runs, prices, the market year by year, advertising and the reviews.
+- `data/computing-events.js`: the Computing Room's events.
 - `data/working.js`: the Seven Ladies, the sites, the phrasebook, how strong a
   Working is, what it nudges, the coincidences and the Chamber's hauntings.
 - `data/working-events.js`: the Working's events.
@@ -100,6 +100,7 @@ for checking the game and will be removed before release.
 | `rules.js` | House rules, objections, the Housekeeper, contributions |
 | `dress.js` | The Sewing Room, the shops, deliveries and wear |
 | `events.js` | Choosing, showing and resolving events; Belief–Play; the glossary |
+| `computing.js` | The Computing Room: development, cassette runs, reviews and sales |
 | `working.js` | The Working: windows, planning, strength, nudges, the Chamber |
 | `scenekit.js` | Reading, checking and playing scenes; tiers and Settings; the scene gates |
 | `preview.html` | The scene preview page |
