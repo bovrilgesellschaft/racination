@@ -3,13 +3,13 @@
 A household-management game of devotion, discipline and the Pit, 1983–1989.
 Adults only (18+).
 
-Current build: **Milestone 5a, events.** Letters arrive with the post at
-Matins and must be answered; visitors and household incidents happen midweek on
-the week's business screen. Thirty-two to start, in data files you can edit and
-add to (see `WRITING-EVENTS.md`). Choices move the Belief–Play axis, shown on
-the Mistress's page, and the house's words unlock in a Glossary. Milestones 1
-to 4 (the turn, residents, the Mistress, the economy, rules and dress) are all
-still here.
+Current build: **Milestone 5, events and stories** (5a and 5b). Letters at
+Matins, visitors and incidents in the week's business, the Belief–Play axis and
+a Glossary (5a); recruits who write and then arrive, named paying guests who
+leave racinated or appalled, the Mistress's crisis, the Housekeeper's
+succession crisis, residents asking to leave, secrets coming to light, and the
+Mistress's contacts (5b). Fifty-nine events in all, in files you can edit (see
+`WRITING-EVENTS.md`). Milestones 1 to 4 are all still here.
 
 ## How to play it
 
@@ -48,6 +48,8 @@ Everything in the `data` folder is for editing:
   starting meters, weekly drift and her lines.
 - `data/letters.js` and `data/events.js`: the letters, visitors and incidents,
   and how often they come. **`WRITING-EVENTS.md` explains how to write your own.**
+- `data/stories.js`: recruits, the crises, asking to leave, secrets and contacts.
+- `data/guests.js`: paying guests' names, jobs and towns, and their reviews.
 - `data/glossary.js`: the house's language and when each term unlocks.
 
 Any line of text can mention the Mistress with tokens such as

@@ -401,7 +401,7 @@
       pitChange: state.house.pitLast
     });
     state.reckoningLine = pick(HOUSE.reckoningLines, null);
-    state.endReason = EC.endReason(state);
+    state.endReason = state.endReason || EC.endReason(state);
   }
 
   function goToRota() {
@@ -828,8 +828,10 @@
   function viewEnd() {
     var reason = state.endReason || "decade";
     var ending = EC.data.endings[reason] || EC.data.endings.decade;
-    var gone = state.departed.length
-      ? "<p>" + state.departed.length + " women left the house racinated.</p>" : "";
+    var racinated = state.departed.filter(function (d) { return d.reason === "racinated"; }).length;
+    var others = state.departed.length - racinated;
+    var gone = (racinated ? "<p>" + racinated + (racinated === 1 ? " woman" : " women") + " left the house racinated.</p>" : "")
+      + (others ? "<p>" + others + (others === 1 ? " woman" : " women") + " left for other reasons.</p>" : "");
     var when = reason === "decade" ? sundayOf(TOTAL_WEEKS - 1) : sundayOf(Math.min(state.week, TOTAL_WEEKS - 1));
     return statusBar() + takeFlash()
       + '<div class="body">'
@@ -873,6 +875,8 @@
     row("The Pit", Math.round(hs.pit) + " · " + esc(pw.word) + esc(trend));
     row("The post", hs.post + (hs.post === 1 ? " letter" : " letters"));
     row("Paying guests this week", hs.guests + " of " + EC.guestCapacity(state) + " rooms");
+    var arriving = (state.events && state.events.arrivals) ? state.events.arrivals.length : 0;
+    if (arriving) row("Expected to join the house", String(arriving));
     var table = '<div class="book inline-book"><table><tbody>' + rows.join("") + "</tbody></table></div>";
 
     var notes = [];
@@ -880,6 +884,9 @@
     if (hs.guests === 0) notes.push(ED.guestLines.none);
     else if (hs.guests === 1) notes.push(ED.guestLines.one);
     else notes.push(ED.guestLines.some.replace("{n}", hs.guests));
+    if (hs.guestList && hs.guestList.length) {
+      notes.push("In the guest rooms: " + hs.guestList.map(function (g) { return g.name + ", " + g.job + " from " + g.town; }).join("; ") + ".");
+    }
     var shabby = EC.shabbyRooms(state);
     if (shabby) notes.push((shabby === 1 ? "One room is" : shabby + " rooms are") + " shabby enough to trouble the household.");
     var html = table + "<p>" + esc(notes.join(" ")) + "</p>";
@@ -1084,14 +1091,15 @@
   function eventCard(p) {
     var e = EV.byId(p.id);
     if (!e) return "";
-    var text = EV.fillText(state, e.text, p);
+    var snap = p.snap || null;
+    var text = snap ? snap.text : EV.fillText(state, e.text, p);
     EV.hear(state, text);
-    var title = EV.fillText(state, e.title, p);
-    var from = e.from ? EV.fillText(state, e.from, p) : "";
+    var title = snap ? snap.title : EV.fillText(state, e.title, p);
+    var from = snap ? snap.from : (e.from ? EV.fillText(state, e.from, p) : "");
     var body;
     if (p.chosen != null) {
       EV.hear(state, p.result);
-      body = '<p class="small note">You chose: ' + esc(EV.fillText(state, e.choices[p.chosen].label, p)) + "</p>"
+      body = '<p class="small note">You chose: ' + esc(snap ? snap.label : EV.fillText(state, e.choices[p.chosen].label, p)) + "</p>"
         + '<p class="event-result">' + esc(p.result) + "</p>";
     } else {
       body = '<div class="event-choices">' + e.choices.map(function (c, i) {
@@ -1213,7 +1221,8 @@
         + "</div>";
     }).join("");
     var gone = state.departed.map(function (p) {
-      return "<li>" + esc(p.name) + " (" + esc(p.first) + "), departed racinated, " + esc(shortDate(sundayOf(p.week))) + "</li>";
+      var how = p.reason === "racinated" ? "departed racinated" : "left the house";
+      return "<li>" + esc(p.name) + " (" + esc(p.first) + "), " + how + ", " + esc(shortDate(sundayOf(p.week))) + "</li>";
     }).join("");
 
     return statusBar() + takeFlash()

@@ -242,9 +242,12 @@
     return items;
   }
 
-  function makeResident(id, polarity, usedSurnames, usedFirst) {
-    var bg = pick(R.backgrounds);
-    var tenure = rand() < 0.3 ? randInt(0, 6) : randInt(7, 60);   // months in the house by January 1983
+  // opts (optional): { background: "wife", tenure: 0 } for a new arrival.
+  function makeResident(id, polarity, usedSurnames, usedFirst, opts) {
+    opts = opts || {};
+    var bg = opts.background ? background(opts.background) : pick(R.backgrounds);
+    if (!polarity) polarity = rand() < 0.5 ? "blonde" : "brunette";
+    var tenure = opts.tenure != null ? opts.tenure : (rand() < 0.3 ? randInt(0, 6) : randInt(7, 60));   // months in the house
     var pitness = clamp(bg.pit * (1 - tenure / 30), 0, 1);
 
     var surname, first, tries = 0;
@@ -298,6 +301,7 @@
         var x = pick(pool.length ? pool : R.secrets);
         return typeof x === "string" ? x : x.text;
       })(),
+      secretOut: false,
       looks: makeLooks(polarity, pitness),
       wardrobe: makeWardrobe(pitness, bg.name, tenure),
       duty: "rest",

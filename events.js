@@ -32,7 +32,8 @@
 
   function all() {
     return (D.letters || []).map(function (e) { if (!e.kind) e.kind = "letter"; return e; })
-      .concat(D.events || []);
+      .concat(D.events || [])
+      .concat((D.stories || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }));
   }
 
   function byId(id) {
@@ -53,6 +54,7 @@
     var ev = state.events;
     ["pending", "followUps", "glossary", "notes"].forEach(function (k) { if (!Array.isArray(ev[k])) ev[k] = []; });
     if (!ev.done) ev.done = {};
+    if (!Array.isArray(ev.arrivals)) ev.arrivals = [];
     if (!ev.records) ev.records = {};
     if (typeof ev.belief !== "number") ev.belief = 0;
     if (typeof ev.nextKey !== "number") ev.nextKey = 1;
@@ -77,7 +79,22 @@
     if (c.skill) {
       for (var k in c.skill) if ((r.skills[k] || 0) < c.skill[k]) return false;
     }
+    if (c.secret) {
+      if (r.secretOut) return false;
+      if (secretId(r.secret) !== c.secret) return false;
+    }
+    if (c.highDoubtWeeks != null && !((r.highDoubtWeeks || 0) >= c.highDoubtWeeks)) return false;
     return true;
+  }
+
+  // Which secret a resident carries, by its id in data/residents.js.
+  function secretId(text) {
+    var list = (D.residents && D.residents.secrets) || [];
+    for (var i = 0; i < list.length; i++) {
+      var x = list[i];
+      if (typeof x === "object" && x.text === text) return x.id;
+    }
+    return null;
   }
 
   // Can this event happen now? Returns who it is about, or null.
@@ -98,6 +115,15 @@
     if (w.moneyAbove != null && !(state.money > pence(w.moneyAbove))) return null;
     if (w.guestsAtLeast != null && !((hs.guests || 0) >= w.guestsAtLeast)) return null;
     if (w.residentsAtLeast != null && state.residents.length < w.residentsAtLeast) return null;
+    if (w.residentsBelow != null && state.residents.length + (ev.arrivals || []).length >= w.residentsBelow) return null;
+    if (w.mistressInCrisis === true) {
+      var MI2 = window.RACINATION_MISTRESS;
+      if (!MI2 || !MI2.inCrisis(state.mistress)) return null;
+    }
+    if (w.housekeeperRebels === true) {
+      var RR2 = window.RACINATION_RULES;
+      if (!RR2 || !RR2.housekeeperWarning(state)) return null;
+    }
     if (w.departedAtLeast != null && state.departed.length < w.departedAtLeast) return null;
     if (w.housekeeper === true && state.housekeeper == null) return null;
     if (w.housekeeper === false && state.housekeeper != null) return null;
@@ -126,6 +152,16 @@
     if (w.departedAtLeast != null && state.departed.length) {
       ctx.departed = state.departed[Math.floor(rand() * state.departed.length)].id;
     }
+    if (w.guest) {
+      var gl = (hs.guestList || []);
+      if (!gl.length) return null;
+      ctx.guest = Math.floor(rand() * gl.length);
+    }
+    if (w.contact) {
+      var cs = (state.mistress && state.mistress.contacts) || [];
+      if (!cs.length) return null;
+      ctx.contact = Math.floor(rand() * cs.length);
+    }
     if (!ignoreChance && w.chance != null && rand() >= w.chance) return null;
     return ctx;
   }
@@ -143,6 +179,8 @@
       resident: ctx.resident != null ? ctx.resident : null,
       other: ctx.other != null ? ctx.other : null,
       departed: ctx.departed != null ? ctx.departed : null,
+      guest: ctx.guest != null ? ctx.guest : null,
+      contact: ctx.contact != null ? ctx.contact : null,
       chosen: null,
       result: null
     });
@@ -163,7 +201,9 @@
       if (f.week <= state.week) {
         var e = byId(f.id);
         if (e) {
-          var ctx = eligible(state, e, monday, season, rand, true) || {};
+          var strict = eligible(state, e, monday, season, rand, true);
+          if (e.onlyIfStillTrue && !strict) return;   // circumstances have changed; the follow-up lapses
+          var ctx = strict || {};
           if (f.resident != null && state.residents.some(function (r) { return r.id === f.resident; })) ctx.resident = f.resident;
           queue(state, e, ctx);
           taken[e.id] = true;
@@ -171,6 +211,38 @@
       } else later.push(f);
     });
     ev.followUps = later;
+
+    // New arrivals whose day has come.
+    var stillComing = [];
+    (ev.arrivals || []).forEach(function (a) {
+      if (a.week <= state.week) {
+        var usedS = state.residents.map(function (r) { return r.surname; }).concat(state.departed.map(function (d) { return (d.name || "").split(" ").pop(); }));
+        var usedF = state.residents.map(function (r) { return r.first; });
+        var r = H.makeResident(state.nextId++, a.polarity || null, usedS, usedF, { tenure: 0, background: a.background });
+        r.duty = "rest";
+        state.residents.push(r);
+        var line = (S.arrivalLine || "{name} arrived on the afternoon train with one suitcase and the twentieth century still on her. She has been given a room and a duty-free week to settle.")
+          .replace("{name}", r.title + " " + r.surname);
+        if (state.house && state.house.news) state.house.news.push(line);
+      } else stillComing.push(a);
+    });
+    ev.arrivals = stillComing;
+
+    // A resident whose Doubt has been very high for some weeks asks to leave.
+    var leaveEvent = byId(S.leaveEventId || "wants-to-leave");
+    if (leaveEvent) {
+      state.residents.forEach(function (r) {
+        if ((r.highDoubtWeeks || 0) >= (S.leaveAfterWeeks || 3)) {
+          var already = ev.pending.some(function (p) { return p.id === leaveEvent.id && p.resident === r.id; });
+          var recently = r.askedToLeave != null && state.week - r.askedToLeave < (S.leaveAskEvery || 8);
+          if (!already && !recently) {
+            queue(state, leaveEvent, { resident: r.id });
+            r.askedToLeave = state.week;
+            taken[leaveEvent.id] = true;
+          }
+        }
+      });
+    }
 
     if (state.week === 0) return;   // the first week is for settling in
     var st = settings();
@@ -214,6 +286,8 @@
       if (e.when && e.when.resident && state.residents.length) ctx.resident = state.residents[0].id;
       if (e.when && e.when.other && state.residents.length > 1) ctx.other = state.residents[1].id;
       if (state.departed.length) ctx.departed = state.departed[0].id;
+      if (e.when && e.when.contact && state.mistress && state.mistress.contacts && state.mistress.contacts.length) ctx.contact = 0;
+      if (e.when && e.when.guest && state.house && state.house.guestList && state.house.guestList.length) ctx.guest = 0;
     }
     queue(state, e, ctx);
     return "";
@@ -250,13 +324,18 @@
     if (d) { t["departed.name"] = d.name; t["departed.first"] = d.first || d.name; }
     var hk = state.housekeeper != null ? findResident(state, state.housekeeper) : null;
     personTokens("housekeeper", hk, t);
+    var g = p.guest != null && state.house && state.house.guestList ? state.house.guestList[p.guest] : null;
+    if (g) { t["guest.name"] = g.name; t["guest.first"] = g.first; t["guest.job"] = g.job; t["guest.town"] = g.town; }
+    if (p.contact != null && state.mistress && state.mistress.contacts) t["contact"] = state.mistress.contacts[p.contact] || "an old acquaintance";
     t["house"] = (D.house && D.house.name) || "the house";
-    var out = String(text || "").replace(/\{(resident|other|departed|housekeeper)\.(\w+)\}|\{house\}/g, function (all) {
+    var out = String(text || "").replace(/\{(resident|other|departed|housekeeper|guest)\.(\w+)\}|\{house\}|\{contact\}/g, function (all) {
       var k = all.slice(1, -1);
       return t[k] != null ? t[k] : all;
     });
     var MI = window.RACINATION_MISTRESS;
     if (MI && state.mistress) out = MI.fillTokens(out, state.mistress);
+    // A sentence that begins with a token ("a college librarian writes...") still begins with a capital.
+    out = out.replace(/(^|[.!?]\s+)([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); });
     return out;
   }
 
@@ -325,6 +404,27 @@
         }
       });
     }
+    if (fx.arrival) {
+      asList(fx.arrival).forEach(function (a) {
+        state.events.arrivals.push({ week: state.week + (a.weeks || 3), background: a.background || null, polarity: a.polarity || null });
+      });
+    }
+    if (fx.revealSecret && res) res.secretOut = true;
+    if (fx.restDuty && res) res.duty = "rest";
+    if (fx.depart && res) {
+      var reason = typeof fx.depart === "string" ? fx.depart : "left";
+      state.departed.push({ id: res.id, name: res.title + " " + res.surname, first: res.first, week: state.week, reason: reason, line: "" });
+      state.residents = state.residents.filter(function (x) { return x.id !== res.id; });
+    }
+    if (fx.departOther) {
+      var ot = findResident(state, p.other);
+      if (ot) {
+        state.departed.push({ id: ot.id, name: ot.title + " " + ot.surname, first: ot.first, week: state.week, reason: "left", line: "" });
+        state.residents = state.residents.filter(function (x) { return x.id !== ot.id; });
+      }
+    }
+    if (fx.end) state.endReason = fx.end;
+    if (fx.dismissHousekeeper) state.housekeeper = null;
     if (fx.record) {
       asList(fx.record).forEach(function (k) { state.events.records[k] = (state.events.records[k] || 0) + 1; });
     }
@@ -347,6 +447,13 @@
     var why = needsMet(state, p, c);
     if (why) return { ok: false, why: why };
 
+    // Fill in the names now, before the effects (which may send someone away).
+    p.snap = {
+      title: fillText(state, e.title, p),
+      from: e.from ? fillText(state, e.from, p) : "",
+      text: fillText(state, e.text, p),
+      label: fillText(state, c.label, p)
+    };
     var resultText = c.result || "";
     var fx = c.effects || null;
     if (c.outcomes && c.outcomes.length) {
@@ -359,15 +466,16 @@
       fx = chosen.effects || fx;
       if (c.effects && chosen.effects) apply(state, p, c.effects);
     }
+    var filledResult = fillText(state, resultText, p);
     apply(state, p, fx);
     var st = settings();
     if (c.rhetoric === "belief") state.events.belief = clamp(state.events.belief + st.rhetoric, -100, 100);
     if (c.rhetoric === "play") state.events.belief = clamp(state.events.belief - st.rhetoric, -100, 100);
 
     p.chosen = index;
-    p.result = fillText(state, resultText, p);
+    p.result = filledResult;
     state.events.done[e.id] = state.week;
-    state.events.notes.push({ week: state.week, title: fillText(state, e.title, p), result: p.result });
+    state.events.notes.push({ week: state.week, title: p.snap.title, result: p.result });
     return { ok: true, result: p.result };
   }
 
@@ -399,6 +507,7 @@
     var b = state.events.belief;
     var st = settings();
     state.residents.forEach(function (r) {
+      r.highDoubtWeeks = r.meters.doubt >= (S.leaveDoubt || 85) ? (r.highDoubtWeeks || 0) + 1 : 0;
       if (b > 0) {
         var dv = b * st.beliefDevotion;
         r.meters.devotion = clamp(r.meters.devotion + dv, 0, 100);
@@ -476,6 +585,8 @@
       if (/\{resident\./.test(txt) && !(e.when && e.when.resident)) problems.push(where + ": it mentions {resident...} but its “when” has no resident.");
       if (/\{other\./.test(txt) && !(e.when && e.when.other)) problems.push(where + ": it mentions {other...} but its “when” has no other.");
       if (/\{departed\./.test(txt) && !(e.when && e.when.departedAtLeast)) problems.push(where + ": it mentions {departed...} but its “when” has no departedAtLeast.");
+      if (/\{guest\./.test(txt) && !(e.when && e.when.guest)) problems.push(where + ": it mentions {guest...} but its “when” has no guest.");
+      if (/\{contact\}/.test(txt) && !(e.when && e.when.contact)) problems.push(where + ": it mentions {contact} but its “when” has no contact.");
     });
     return problems;
   }

@@ -1,9 +1,10 @@
 # Writing your own events
 
-Events live in two files:
+Events live in three files:
 
 - `data/letters.js` holds letters, which arrive with the post at Matins.
 - `data/events.js` holds visitors and household incidents, which happen midweek on the week's business screen.
+- `data/stories.js` holds the household's longer stories: recruits, the two crises, asking to leave, secrets and the Mistress's contacts. Its opening comment lists a few extra conditions and effects used there.
 
 Each event is a block between `{` and `}`, with a comma after it. To add one, copy an existing block, paste it after another, and change the words.
 
@@ -56,6 +57,11 @@ Each event is a block between `{` and `}`, with a comma after it. To add one, co
 | `beliefAbove: 30`, `beliefBelow: -30` | Depending on the Belief–Play axis |
 | `authorityBelow: 20` | When the Mistress's Authority is low |
 | `chance: 0.5` | Even when everything else fits, only half the time |
+| `residentsBelow: 14` | Only when there is room in the house |
+| `mistressInCrisis: true` | Only when her Doubt has outrun her Conviction for a season |
+| `housekeeperRebels: true` | Only when the Housekeeper's Doubt outweighs the Mistress's Authority |
+| `guest: true` | Picks one of this week's paying guests: `{guest.name}`, `{guest.job}`, `{guest.town}` |
+| `contact: true` | Picks one of the Mistress's contacts: `{contact}` |
 | `resident: { ... }` | Picks a resident (see below) |
 | `other: { ... }` | Picks a second, different resident |
 
@@ -66,6 +72,7 @@ Each event is a block between `{` and `}`, with a comma after it. To add one, co
 - `desire: "structure"`
 - `tie: "family"` (one of `family`, `ex`, `job`, `debts`, `flat`)
 - `skill: { letters: 2 }`
+- `secret: "radio"` (a resident with that secret, not yet out; the ids are in `data/residents.js`)
 - `racinationBelow: 40`, `racinationAbove: 70`, `doubtAbove: 50`, `doubtBelow: 20`, `devotionAbove: 60`
 
 **`once: true`** means the event happens only once in a run. **`every: 13`** sets how many weeks pass before it can come again; the default is 26.
@@ -73,6 +80,8 @@ Each event is a block between `{` and `}`, with a comma after it. To add one, co
 **`weight: 2`** makes an event twice as likely to be picked as an ordinary one.
 
 **`followUpOnly: true`** means the event never happens by chance; only another event's follow-up can bring it.
+
+**`onlyIfStillTrue: true`** makes a follow-up lapse quietly if its `when` no longer holds by the time it is due.
 
 **`choices`** holds two to four answers. Each choice has:
 - **`label`**: what the button says.
@@ -97,6 +106,12 @@ Each event is a block between `{` and `}`, with a comma after it. To add one, co
 | `room: { id: "kitchen", condition: 10, period: 5 }` | A room (see `data/economy.js` for room ids) |
 | `followUp: { id: "another-event", weeks: 3 }` | Brings another event in that many weeks |
 | `record: "withheldLetters"` | Quietly counts something for later milestones |
+| `arrival: { weeks: 3, background: "wife" }` | A new resident arrives (background optional) |
+| `depart: "left"` | The picked resident leaves the house |
+| `revealSecret: true` | Her secret is out and won't come up again |
+| `restDuty: true` | Her duty is set to Rest |
+| `dismissHousekeeper: true` | The Housekeeper's post falls vacant |
+| `end: "abdication"` (or `"schism"`) | The run ends after this week |
 
 ## Tokens
 

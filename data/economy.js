@@ -42,7 +42,7 @@ window.RACINATION_DATA.economy = {
     perKitchenCookery: 2,    // for each point of cookery in the Kitchen
     roomPeriodWeight: 0.25,  // how much the guest rooms' and Drawing Room's Period count
     pitPenalty: 0.25,        // satisfaction lost per point of Pit
-    reputationPull: 0.12     // how fast reputation moves towards satisfaction
+    reputationPull: 0.05     // how fast reputation drifts towards satisfaction (guests' reviews move it too)
   },
 
   publications: {
@@ -190,6 +190,10 @@ window.RACINATION_DATA.economy = {
       text: "The Pit has reached the house. One by one the household put on jeans, turned on a television somebody had brought back from the village, and went home. Nobody quarrelled. That was the worst of it." },
     bankrupt: { title: "The Quiet Dissolution",
       text: "The money ran out. There was no scandal, only a sale notice in the Oxford Mail and an auction of sewing machines on a wet Saturday. The house was let to a man who sells double glazing." },
+    abdication: { title: "The Abdication",
+      text: "{mistress.name} has laid down the keys of the house and gone, nobody is quite sure where: there was a taxi, and a suitcase, and a letter for each of the household. The house will choose a new Mistress at Matins. It will not be the same house." },
+    schism: { title: "The Schism",
+      text: "Half the household has gone to a farmhouse near Burford with the Housekeeper, to keep the faith properly. Hesperis House is quieter than it has ever been, and colder, and nobody quite knows which half was right." },
     decade: { title: "The End of the Decade",
       text: "December 1989. The decade the house never consented to has ended without consulting it. Whatever the house has become, it is still standing, and the Housekeeper has ruled off the last page." }
   },

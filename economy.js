@@ -110,6 +110,26 @@
      The start of a week: guests arrive, the post comes, the news
      ============================================================ */
 
+  // This week's paying guests, by name (Milestone 5b).
+  function makeGuests(n, rand) {
+    var G = D.guests;
+    var list = [];
+    if (!G) return list;
+    function p(arr) { return arr[Math.floor(rand() * arr.length)]; }
+    for (var i = 0; i < n; i++) {
+      var first = p(G.firstNames);
+      var title = rand() < 0.5 ? "Mrs" : "Miss";
+      list.push({
+        first: first,
+        name: title + " " + p(G.surnames),
+        job: p(G.jobs),
+        town: p(G.towns),
+        age: G.ages[0] + Math.floor(rand() * (G.ages[1] - G.ages[0] + 1))
+      });
+    }
+    return list;
+  }
+
   function startWeek(state, monday, season, rand) {
     var hs = state.house;
     if (hs.weekOf === state.week) return;
@@ -122,6 +142,7 @@
     var demand = cap * (E.guests.demandBase + hs.reputation / 150) * (E.guests.season[season] || 1) * intake;
     var g = Math.floor(demand) + (rand() < demand - Math.floor(demand) ? 1 : 0);
     hs.guests = clamp(g, 0, cap);
+    hs.guestList = makeGuests(hs.guests, rand);
 
     var ties = 0;
     state.residents.forEach(function (r) { ties += r.ties.length; });
@@ -282,6 +303,20 @@
       hs.satisfaction = clamp(G.satisfactionBase + charm * G.perGuestCareCharm + cook * G.perKitchenCookery
         + per * G.roomPeriodWeight - hs.pit * G.pitPenalty, 0, 100);
       hs.reputation = clamp(hs.reputation + (hs.satisfaction - hs.reputation) * G.reputationPull, 0, 100);
+
+      // Each named guest leaves racinated or appalled, and says so (Milestone 5b).
+      var GD = D.guests;
+      if (GD && hs.guestList && hs.guestList.length) {
+        hs.guestList.forEach(function (gst, i) {
+          var luck = (Math.sin((state.week + 1) * 12.9898 + i * 78.233) + 1) / 2;   // steady per guest and week
+          var happy = luck * 100 < hs.satisfaction;
+          gst.outcome = happy ? "racinated" : "appalled";
+          hs.reputation = clamp(hs.reputation + (happy ? GD.racinatedReputation : GD.appalledReputation), 0, 100);
+          var lines = happy ? GD.racinatedLines : GD.appalledLines;
+          var line = lines[(state.week + i) % lines.length];
+          events.push(line.replace("{name}", gst.name).replace("{job}", gst.job).split("{town}").join(gst.town));
+        });
+      }
     }
 
     // Debt.

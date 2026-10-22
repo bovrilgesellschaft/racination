@@ -153,21 +153,22 @@ window.RACINATION_DATA.residents = {
 
   /* ---------- Secrets (hidden; they matter from Milestone 5) ---------- */
 
-  // A secret written as { text: "...", background: "wife" } is only given to that background.
+  // Each secret has an id (used by the events that bring it to light, in data/stories.js)
+  // and its text. A secret with background: "wife" is only given to that background.
 
   secrets: [
-    "She keeps a transistor radio wrapped in a petticoat at the bottom of her trunk.",
-    "She is not thirty-one, as she told the house, but thirty-eight.",
-    "She has been writing a novel about the house, and it is not kind.",
-    { text: "She still sends money to her husband, who does not know where she is.", background: "wife" },
-    "She wrote to the house for a year under a false name before she came.",
-    "She does not believe a word of the doctrine, but she is in love with someone here.",
-    "She has a Walkman and one cassette, and plays it under the bedclothes.",
-    "She was asked to leave another Goddess group, and has never said why.",
-    "She has been in touch with a journalist, and has not yet decided what to tell her.",
-    "She cannot read music, and has been miming the hymns for two years.",
-    "She smokes, in the garden, after Compline.",
-    "She is the author of a lurid paperback published under another name."
+    { id: "radio", text: "She keeps a transistor radio wrapped in a petticoat at the bottom of her trunk." },
+    { id: "age", text: "She is seven years older than she told the house when she came." },
+    { id: "novel", text: "She has been writing a novel about the house, and it is not kind." },
+    { id: "husband", text: "She still sends money to her husband, who does not know where she is.", background: "wife" },
+    { id: "falsename", text: "She wrote to the house for a year under a false name before she came." },
+    { id: "unbeliever", text: "She does not believe a word of the doctrine, but she is in love with someone here." },
+    { id: "walkman", text: "She has a Walkman and one cassette, and plays it under the bedclothes." },
+    { id: "othergroup", text: "She was asked to leave another Goddess group, and has never said why." },
+    { id: "journalist", text: "She has been in touch with a journalist, and has not yet decided what to tell her." },
+    { id: "hymns", text: "She cannot read music, and has been miming the hymns for two years." },
+    { id: "smokes", text: "She smokes, in the garden, after Compline." },
+    { id: "paperback", text: "She is the author of a lurid paperback published under another name." }
   ],
 
   /* ---------- Duties on the rota (GDD §4) ---------- */

@@ -21,7 +21,18 @@ window.RACINATION_DATA.eventSettings = {
   rhetoricShift: 3,
   // Each week: Devotion gained per point of Belief; Doubt eased per point of Play.
   beliefDevotion: 0.003,
-  playDoubtRelief: 0.002
+  playDoubtRelief: 0.002,
+
+  // Asking to leave (Milestone 5b): a resident whose Doubt has stayed at or above
+  // leaveDoubt for leaveAfterWeeks weeks asks to leave; she will not ask again
+  // for leaveAskEvery weeks.
+  leaveDoubt: 85,
+  leaveAfterWeeks: 3,
+  leaveAskEvery: 8,
+  leaveEventId: "wants-to-leave",
+
+  // When a new resident arrives. {name} is filled in.
+  arrivalLine: "{name} arrived on the afternoon train with one suitcase and the twentieth century still on her. She has been given a room and a week without duties to settle."
 };
 
 window.RACINATION_DATA.events = [
