@@ -486,6 +486,93 @@ textarea.portrait {
   .meter { grid-template-columns: 5.6em 1fr 3.8em; }
 }
 
+/* ---------- The Mistress (Milestone 3) ---------- */
+
+.meter.aut .mbar span { background: var(--magenta); }
+.meter.con .mbar span { background: var(--cyan); }
+
+.create-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 1em;
+  align-items: start;
+}
+.create-preview {
+  position: sticky;
+  top: 0.5em;
+  background: var(--white);
+  border: 2px solid var(--blue);
+  padding: 0.5em 0.7em;
+  max-height: 95vh;
+  overflow-y: auto;
+}
+.create-preview p { margin: 0 0 0.5em; }
+.preview-head {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.25em;
+  margin: 0.2em 0 0.3em;
+  color: var(--red);
+}
+.portrait-preview { color: var(--blue); }
+
+fieldset.create-section {
+  border: 0;
+  border-top: 2px solid var(--red);
+  margin: 0.6em 0 0.8em;
+  padding: 0.3em 0 0;
+  min-width: 0;
+}
+fieldset.create-section legend {
+  font-family: var(--display);
+  font-size: 1.3em;
+  color: var(--red);
+  padding: 0 0.3em 0 0;
+}
+.section-tools { margin: 0 0 0.3em; }
+
+label.field {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 0.4em;
+  min-width: 0;
+}
+.create-form, .create-preview { min-width: 0; }
+label.field > span:first-child { font-size: 0.85em; color: var(--blue); }
+label.field select,
+label.field input {
+  font-family: var(--text);
+  font-size: 1em;
+  background: var(--black);
+  color: var(--bwhite);
+  border: 0;
+  border-radius: 0;
+  padding: 0.1em 0.4em;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+label.field input { background: var(--bwhite); color: var(--black); border: 2px solid var(--black); }
+label.field select:focus-visible,
+label.field input:focus-visible { outline: 2px solid var(--byellow); outline-offset: 1px; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 0.8em;
+}
+.grid label.field select { font-size: 0.9em; }
+
+.book tr.mistress-row td { background: #f4e9f4; }
+
+@media (max-width: 760px) {
+  .create-grid { grid-template-columns: 1fr; }
+  .create-preview { position: static; max-height: none; }
+}
+@media (max-width: 480px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
 /* ---------- Small screens ---------- */
 
 @media (max-width: 480px) {

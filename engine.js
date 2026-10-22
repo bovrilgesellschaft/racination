@@ -1,8 +1,9 @@
 /*
   RACINATION — engine.js
   The title screen, the weekly turn, the Matins report, the ledger,
-  saving and loading (Milestone 1), and the household screens:
-  residents, the rota and the weekly reckoning of moods (Milestone 2).
+  saving and loading (Milestone 1), the household screens:
+  residents, the rota and the weekly reckoning of moods (Milestone 2),
+  and the Mistress: her creation screen and her page (Milestone 3).
 
   Game text lives in the data folder. The household's own rules
   live in household.js. This file holds the turn and the screens.
@@ -14,17 +15,18 @@
   var DATA = window.RACINATION_DATA || {};
   var HOUSE = DATA.house;
   var H = window.RACINATION_HOUSEHOLD;
+  var MI = window.RACINATION_MISTRESS;
 
   var SAVE_KEY = "racination.save.v1";
   var ADULT_KEY = "racination.adult";
   var TESTING_KEY = "racination.testing";
-  var SAVE_VERSION = 2;
+  var SAVE_VERSION = 3;
 
   var screenEl = document.getElementById("screen");
   var borderEl = document.getElementById("border");
   var fileInput = document.getElementById("import-file");
 
-  if (!HOUSE || !HOUSE.startDate || !H || !DATA.appearance || !DATA.wardrobe || !DATA.residents) {
+  if (!HOUSE || !HOUSE.startDate || !H || !MI || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
     screenEl.innerHTML = '<p class="warn">One of the game’s files is missing or has a mistake in it, '
       + "so the game cannot start. If you have just edited a file in the data folder, check it for a missing "
       + "comma or quotation mark.</p>";
@@ -181,7 +183,7 @@
   var ledgerYear = null;
   var pendingImport = false;
   var residentId = null;  // which resident's page is open
-  var returnView = "game";
+  var draft = null;       // the Mistress being made on the creation screen
 
   function newState() {
     var seed = (Math.random() * 4294967296) >>> 0;
@@ -202,8 +204,11 @@
       ended: false,
       residents: [],
       departed: [],
-      nextId: 1
+      nextId: 1,
+      mistress: null,
+      rules: {}
     };
+    draft = null;
     addHousehold();
     return state;
   }
@@ -223,6 +228,13 @@
       addHousehold();
       s.version = 2;
     }
+    if (s.version < 3) {
+      // Milestone 2 saves have no Mistress yet: the creation screen asks for one.
+      s.mistress = null;
+      s.rules = {};
+      s.version = 3;
+    }
+    if (!s.rules) s.rules = {};
     if (!Array.isArray(s.residents)) s.residents = [];
     if (!Array.isArray(s.departed)) s.departed = [];
     if (typeof s.nextId !== "number") s.nextId = s.residents.length + 1;
@@ -328,8 +340,20 @@
       state.residents = state.residents.filter(function (x) { return x.id !== r.id; });
     });
 
+    var mistressWeek = null;
+    if (state.mistress) {
+      MI.weekly(state.mistress, state.residents, departures.length);
+      var mm = state.mistress;
+      mistressWeek = {
+        name: MI.displayName(mm),
+        authority: Math.round(mm.meters.authority), conviction: Math.round(mm.meters.conviction), doubt: Math.round(mm.meters.doubt),
+        da: mm.last.authority, dc: mm.last.conviction, dd: mm.last.doubt
+      };
+    }
+
     state.ledger.push({
       week: state.week,
+      mistress: mistressWeek,
       lines: lines,
       received: received,
       paid: paid,
@@ -451,6 +475,11 @@
       .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
+  // Fill the Mistress's tokens, {mistress.name} and the rest, in any text.
+  function T(text) {
+    return state && state.mistress ? MI.fillTokens(text, state.mistress) : text;
+  }
+
   function setFlash(msg, bad) {
     flashMsg = msg;
     flashBad = !!bad;
@@ -481,6 +510,7 @@
       + "<span>" + moneyHTML(state.money) + "</span></div>"
       + '<nav class="menu" aria-label="Game menu">'
       + (view !== "game" ? '<button data-act="back">The week</button>' : "")
+      + (state.mistress ? '<button data-act="mistress">Mistress</button>' : "")
       + '<button data-act="household">Household</button>'
       + '<button data-act="ledger">Ledger</button>'
       + '<button data-act="export">Save file</button>'
@@ -624,7 +654,7 @@
         + "<p>Money in hand: <strong>" + moneyHTML(state.money) + "</strong>.</p>";
     }
 
-    var moods = "<p>" + esc(H.householdMood(state.residents)) + "</p>";
+    var moods = "<p>" + esc(T(H.householdMood(state.residents))) + "</p>";
     if (last && last.people && last.people.length) {
       var present = last.people.filter(function (p) { return resident(p.id); });
       var up = present.slice().sort(function (a, b) { return b.dr - a.dr; })[0];
@@ -643,7 +673,9 @@
       + '<div class="body">'
       + '<h2 class="band">Matins</h2>'
       + '<p class="dateline">' + esc(longDate(d)) + "</p>"
-      + '<div class="pane"><p>' + esc(state.matinsLine) + "</p></div>"
+      + '<div class="pane"><p>' + esc(T(state.matinsLine)) + "</p>"
+      + (MI.inCrisis(state.mistress) ? '<p class="note">' + esc(T(H.helpers.fixedPick(MI.data.crisisLines, "c" + state.week))) + "</p>" : "")
+      + "</div>"
       + '<h2 class="band blue">The Housekeeper’s report</h2>'
       + '<div class="pane">' + report + moods + "</div>"
       + '<div class="actions"><button class="primary" data-act="to-rota" data-primary>To the rota board</button>'
@@ -708,7 +740,13 @@
         + '</td><td class="num">' + p.devotion + " " + delta(p.dd)
         + '</td><td class="num">' + p.doubt + " " + delta(p.db) + "</td></tr>";
     }).join("");
-    var events = (e.events || []).map(function (x) { return "<p>" + esc(x) + "</p>"; }).join("");
+    var events = (e.events || []).map(function (x) { return "<p>" + esc(T(x)) + "</p>"; }).join("");
+    if (e.mistress) {
+      var em = e.mistress;
+      people = '<tr class="mistress-row"><td>' + esc(em.name) + '<br><span class="small">Authority, Conviction, Doubt</span></td><td class="num">' + em.authority + " " + delta(em.da)
+        + '</td><td class="num">' + em.conviction + " " + delta(em.dc)
+        + '</td><td class="num">' + em.doubt + " " + delta(em.dd) + "</td></tr>" + people;
+    }
 
     return statusBar() + takeFlash()
       + '<div class="body">'
@@ -723,7 +761,7 @@
       + '<div class="pane" style="border-top:3px double var(--blue)">'
       + "<p>" + (net >= 0 ? "The week ends " + money(net) + " to the good." : "The week ends " + money(-net) + " to the bad.")
       + " Carried forward: <strong>" + moneyHTML(e.balance) + "</strong>.</p>"
-      + '<p class="note">' + esc(state.reckoningLine || "") + "</p></div>"
+      + '<p class="note">' + esc(T(state.reckoningLine || "")) + "</p></div>"
       + (people || events ? '<h2 class="band blue">The household’s week</h2>'
         + (events ? '<div class="pane">' + events + "</div>" : "")
         + (people ? '<div class="book' + (events ? "" : '" style="border-top:3px double var(--blue)') + '"><table>'
@@ -858,6 +896,247 @@
       + "</div>";
   }
 
+  /* ---------- The Mistress: creation ---------- */
+
+  var A = DATA.appearance;
+
+  function getField(obj, path) {
+    var parts = path.split(".");
+    var v = obj;
+    for (var i = 0; i < parts.length; i++) { if (v == null) return ""; v = v[parts[i]]; }
+    return v;
+  }
+  function setField(obj, path, value) {
+    var parts = path.split(".");
+    var o = obj;
+    for (var i = 0; i < parts.length - 1; i++) o = o[parts[i]];
+    o[parts[parts.length - 1]] = value;
+  }
+
+  function selectField(label, field, options, extra) {
+    var cur = String(getField(draft, field));
+    var opts = options.map(function (o) {
+      return '<option value="' + esc(o.value) + '"' + (String(o.value) === cur ? " selected" : "") + ">" + esc(o.label) + "</option>";
+    }).join("");
+    return '<label class="field"><span>' + esc(label) + '</span><select data-field="' + field + '">' + opts + "</select>" + (extra || "") + "</label>";
+  }
+
+  function textField(label, field, hint) {
+    return '<label class="field"><span>' + esc(label) + '</span><input type="text" data-field="' + field + '" value="'
+      + esc(getField(draft, field) || "") + '" maxlength="30" autocomplete="off" spellcheck="false">'
+      + (hint ? '<span class="small note">' + esc(hint) + "</span>" : "") + "</label>";
+  }
+
+  function fromList(list) {
+    return list.map(function (o) { return { value: o.text, label: capital(o.text) }; });
+  }
+  function fromItems(list) {
+    return list.map(function (o) { return { value: o.id, label: o.label }; });
+  }
+
+  function chooseButton(section, label) {
+    return '<button class="tiny" data-act="choose" data-section="' + section + '">' + esc(label || "Choose for me") + "</button>";
+  }
+
+  function createSection(title, section, body, buttonLabel) {
+    return '<fieldset class="create-section"><legend>' + esc(title) + "</legend>"
+      + '<div class="section-tools">' + chooseButton(section, buttonLabel) + "</div>"
+      + body + "</fieldset>";
+  }
+
+  function previewHTML() {
+    var m = MI.preview(draft);
+    var season = "winter";
+    var desc = MI.describe(m, season);
+    var bg = MI.background(draft.background);
+    return '<h3 class="preview-head">As the house will see her</h3>'
+      + "<p>" + esc(desc.appearance) + "</p>"
+      + "<p>" + esc(desc.personal) + "</p>"
+      + "<p>" + esc(desc.dress) + "</p>"
+      + '<p class="small note">She begins with ' + money(pence(bg.money)) + " in the bank"
+      + (state.week > 0 || state.ledger.length ? " (this run is already under way, so the house keeps its own money)" : "")
+      + ", Authority " + Math.round(m.meters.authority) + ", Conviction " + Math.round(m.meters.conviction)
+      + " and Doubt " + Math.round(m.meters.doubt) + ".</p>"
+      + '<h3 class="preview-head">Portrait description</h3>'
+      + '<p class="small portrait-preview">' + esc(MI.portrait(m, season)) + "</p>";
+  }
+
+  function viewCreate() {
+    if (!draft) draft = MI.randomDraft();
+    var D = MI.data;
+    var ages = [];
+    for (var a = D.ages[0]; a <= D.ages[1]; a++) ages.push({ value: a, label: String(a) });
+    var st = MI.style(draft.style);
+    var bg = MI.background(draft.background);
+
+    var name = createSection("Her name", "name",
+      selectField("Title", "title", D.titles.map(function (t) { return { value: t, label: t }; }))
+      + textField("First name", "first", "Used by those who know her well.")
+      + textField("Surname", "surname"), "Random name");
+
+    var age = createSection("Her age and country", "age",
+      selectField("Age", "age", ages)
+      + selectField("Nationality", "nationality", D.nationalities.map(function (n) { return { value: n, label: n }; }))
+      + '<p class="small note">An older Mistress starts with more Authority. The village gossips more about a younger one.</p>');
+
+    var L = draft.looks;
+    var looks = createSection("Her appearance", "looks",
+      '<div class="grid">'
+      + selectField("Complexion", "looks.skin", fromList(A.skin))
+      + selectField("Face", "looks.face", fromList(A.face))
+      + selectField("Cheeks", "looks.cheeks", fromList(A.cheeks))
+      + selectField("Chin", "looks.chin", fromList(A.chin))
+      + selectField("Nose", "looks.nose", fromList(A.nose))
+      + selectField("Lips", "looks.lips", fromList(A.lips))
+      + selectField("Eye colour", "looks.eyeColour", fromList(A.eyeColour))
+      + selectField("Eyes", "looks.eyeShape", fromList(A.eyeShape))
+      + selectField("Eyelashes", "looks.eyelashes", fromList(A.eyelashes))
+      + selectField("Eyebrows", "looks.eyebrows", fromList(A.eyebrows))
+      + selectField("Hair colour", "looks.hairColour", fromList(A.hairColour))
+      + selectField("Hair length", "looks.hairLength", fromList(A.hairLength))
+      + selectField("Hair style", "looks.hairStyle", fromList(MI.hairStylesFor(L.hairLength)))
+      + selectField("Make-up", "looks.makeup", fromList(MI.makeupChoices()))
+      + selectField("Height", "looks.height", fromList(A.height))
+      + selectField("Build", "looks.physique", fromList(A.physique))
+      + "</div>"
+      + '<p class="small">Measurements: <strong>' + L.bust + "–" + L.waist + "–" + L.hips + "</strong> "
+      + '<button class="tiny" data-act="remeasure">Redraw</button></p>'
+      + (A.hairColour.some(function (h) { return h.text === L.hairColour && h.tone === "fair"; })
+        ? '<p class="small note">A fair-haired Mistress: the house will have views.</p>' : ""));
+
+    var manner = createSection("Her manner", "manner",
+      selectField("Voice", "voice", fromItems(D.voices))
+      + selectField("Distinguishing mark", "mark", fromItems(D.marks))
+      + selectField("Scent", "scent", fromItems(D.scents))
+      + '<p class="small note">A regional voice costs a little standing with snobbish guests (from Milestone 4).</p>');
+
+    var styleS = createSection("Her style within the 1930s", "style",
+      selectField("Style", "style", fromItems(D.styles))
+      + '<p class="small">' + esc(st.prose) + " The house's dress code begins <strong>" + esc(st.dressCode) + "</strong>.</p>");
+
+    var bgS = createSection("Her background", "background",
+      selectField("Background", "background", fromItems(D.backgrounds))
+      + '<p class="small">' + esc(bg.blurb) + "</p>"
+      + '<p class="small note">Starting money ' + money(pence(bg.money)) + ". Contacts: " + esc(bg.contacts.join("; ")) + ".</p>");
+
+    return (state.mistress ? statusBar() : "") + takeFlash()
+      + '<div class="body">'
+      + '<h2 class="band black">The Mistress of Hesperis House</h2>'
+      + '<p class="dateline">Make the woman who will hold the keys</p>'
+      + '<div class="pane create">'
+      + '<p class="small">Choose each part yourself, or let the house choose. She is a brunette by temperament, whatever her hair says.</p>'
+      + '<div class="actions"><button data-act="choose" data-section="all">Choose everything for me</button></div>'
+      + '<div class="create-grid"><div class="create-form">' + name + age + looks + manner + styleS + bgS + "</div>"
+      + '<div class="create-preview" id="create-preview">' + previewHTML() + "</div></div>"
+      + "</div>"
+      + '<div class="actions"><button class="primary" data-act="take-keys">Take up the keys of the house</button></div>'
+      + "</div>";
+  }
+
+  var NAME_OK = /^[A-Za-zÀ-ɏ][A-Za-zÀ-ɏ' \-]{0,29}$/;
+
+  function takeKeys() {
+    var first = String(draft.first || "").trim();
+    var surname = String(draft.surname || "").trim();
+    if (!NAME_OK.test(surname)) {
+      setFlash("She needs a surname: letters, spaces, hyphens and apostrophes only.", true);
+      render(); return;
+    }
+    if (first && !NAME_OK.test(first)) {
+      setFlash("Her first name can only use letters, spaces, hyphens and apostrophes.", true);
+      render(); return;
+    }
+    draft.first = first; draft.surname = surname;
+    var m = MI.build(draft);
+    state.mistress = m;
+    state.rules = state.rules || {};
+    state.rules.dressCode = m.dressCode;
+    if (state.week === 0 && !state.ledger.length) {
+      state.money = pence(MI.background(draft.background).money);
+      state.openingMoney = state.money;
+    }
+    draft = null;
+    saveGame();
+    setFlash(MI.displayName(m) + " has taken up the keys of " + HOUSE.name + ".");
+    goView("game");
+  }
+
+  /* ---------- The Mistress: her page ---------- */
+
+  function viewMistress() {
+    var m = state.mistress;
+    var season = currentSeason();
+    var desc = MI.describe(m, season);
+    var bg = MI.background(m.background);
+    var st = MI.style(m.style);
+    var notes = MI.data.meterNotes;
+    var worn = H.outfit(m, season);
+
+    var meterRows = meter("Authority", m.meters.authority, state.week > 0 ? m.last.authority : null, "aut")
+      + meter("Conviction", m.meters.conviction, state.week > 0 ? m.last.conviction : null, "con")
+      + meter("Doubt", m.meters.doubt, state.week > 0 ? m.last.doubt : null, "dbt");
+
+    var skills = H.skills.map(function (s) {
+      var v = m.skills[s] || 0;
+      return "<tr><td>" + esc(H.skillNames[s]) + '</td><td class="num">' + v + '</td><td class="pips" aria-hidden="true">'
+        + "■■■■■".slice(0, v) + '<span class="off">' + "□□□□□".slice(0, 5 - v) + "</span></td></tr>";
+    }).join("");
+
+    var wardrobe = m.wardrobe.map(function (g) {
+      var on = worn.indexOf(g) >= 0;
+      return "<tr" + (on ? ' class="current"' : "") + "><td>" + esc(capital(H.garmentName(g))) + "</td>"
+        + '<td><span class="tag period">' + g.year + '</span></td><td class="num">' + g.condition + "%</td></tr>";
+    }).join("");
+
+    var gossip = m.gossip >= 66 ? "a great deal" : m.gossip >= 33 ? "a fair amount" : "very little";
+
+    var testingTools = testing
+      ? '<div class="testing"><p class="small">Testing tools</p>'
+        + ["authority", "conviction", "doubt"].map(function (k) {
+          return '<button data-act="nudge" data-who="mistress" data-meter="' + k + '" data-by="10">' + capital(k) + " +10</button>"
+            + '<button data-act="nudge" data-who="mistress" data-meter="' + k + '" data-by="-10">−10</button>';
+        }).join("")
+        + '<button data-act="remake-mistress">Make her again</button></div>'
+      : "";
+
+    return statusBar() + takeFlash()
+      + '<div class="body">'
+      + '<h2 class="band">' + esc(MI.displayName(m)) + "</h2>"
+      + '<p class="dateline">' + esc((m.first ? m.first + " " : "") + m.surname) + " · Mistress · Brunette · aged " + m.age
+      + " · " + esc(m.nationality) + "</p>"
+      + '<div class="pane">'
+      + '<p class="note">' + esc(desc.opening) + "</p>"
+      + "<p>" + esc(desc.appearance) + "</p>"
+      + "<p>" + esc(desc.personal) + "</p>"
+      + "<p>" + esc(desc.dress) + "</p>"
+      + "<p>" + esc(desc.expression) + "</p>"
+      + "</div>"
+      + '<h2 class="band blue">Her state</h2>'
+      + '<div class="pane">' + meterRows
+      + '<ul class="plain small note"><li>Authority: ' + esc(notes.authority) + "</li><li>Conviction: " + esc(notes.conviction)
+      + "</li><li>Doubt: " + esc(notes.doubt) + "</li></ul>"
+      + (MI.inCrisis(m) ? '<p class="warn">Her Doubt has outrun her Conviction for a season.</p>' : "")
+      + "</div>"
+      + '<h2 class="band blue">Her history</h2>'
+      + '<div class="pane"><p>' + esc(bg.blurb) + "</p>"
+      + "<p><strong>Contacts:</strong></p><ul class=\"plain\">"
+      + m.contacts.map(function (c) { return "<li>" + esc(capital(c)) + "</li>"; }).join("") + "</ul>"
+      + "<p><strong>Her style:</strong> " + esc(st.label) + ". The house's dress code is <strong>" + esc(state.rules.dressCode || st.dressCode) + "</strong>.</p>"
+      + '<p class="small note">The village talks about her ' + gossip + ".</p></div>"
+      + '<h2 class="band blue">Her skills</h2>'
+      + '<div class="book" style="border-top:3px double var(--blue)"><table><tbody>' + skills + "</tbody></table></div>"
+      + '<h2 class="band blue">Her wardrobe</h2>'
+      + '<div class="book" style="border-top:3px double var(--blue)"><table>'
+      + '<thead><tr><th>Garment</th><th>Date</th><th class="num">Kept</th></tr></thead><tbody>' + wardrobe + "</tbody></table></div>"
+      + '<h2 class="band black">Portrait description</h2>'
+      + '<div class="pane"><p class="small note">Plain text for an image generator.</p>'
+      + '<textarea class="portrait" id="portrait-text" readonly rows="7">' + esc(MI.portrait(m, season)) + "</textarea>"
+      + '<div class="actions"><button data-act="copy-portrait">Copy portrait description</button></div></div>'
+      + testingTools
+      + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div>'
+      + "</div>";
+  }
+
   /* ---------- The ledger ---------- */
 
   function viewLedger() {
@@ -915,8 +1194,10 @@
       case "ledger": html = viewLedger(); break;
       case "household": html = viewHousehold(); break;
       case "resident": html = viewResident(); break;
+      case "mistress": html = state.mistress ? viewMistress() : viewCreate(); break;
       case "game":
-        if (state.ended || state.phase === "end") html = viewEnd();
+        if (!state.mistress) html = viewCreate();
+        else if (state.ended || state.phase === "end") html = viewEnd();
         else if (state.phase === "rota") html = viewRota();
         else if (state.phase === "reckoning" && entryFor(state.week)) html = viewReckoning();
         else { state.phase = "matins"; html = viewMatins(); }
@@ -1054,7 +1335,7 @@
       case "next-week": nextWeek(); break;
       case "copy-portrait": copyPortrait(); break;
       case "nudge":
-        var r = resident(residentId);
+        var r = el.getAttribute("data-who") === "mistress" ? state.mistress : resident(residentId);
         if (r) {
           var m = el.getAttribute("data-meter");
           r.meters[m] = Math.max(0, Math.min(100, r.meters[m] + Number(el.getAttribute("data-by"))));
@@ -1062,6 +1343,19 @@
           var y = window.scrollY; render(); window.scrollTo(0, y);
         }
         break;
+      case "mistress": goView("mistress"); break;
+      case "choose":
+        MI.chooseFor(draft, el.getAttribute("data-section"));
+        rerenderKeepingPlace(); break;
+      case "remeasure":
+        MI.remeasure(draft);
+        rerenderKeepingPlace(); break;
+      case "take-keys": takeKeys(); break;
+      case "remake-mistress":
+        draft = null;
+        state.mistress = null;
+        saveGame();
+        goView("game"); break;
       case "regen":
         addHousehold();
         saveGame();
@@ -1069,6 +1363,36 @@
         render(); break;
     }
   }
+
+  function rerenderKeepingPlace(focusField) {
+    var y = window.scrollY;
+    render();
+    window.scrollTo(0, y);
+    if (focusField) {
+      var el = screenEl.querySelector('[data-field="' + focusField + '"]');
+      if (el) el.focus();
+    }
+  }
+
+  // The creation screen: selects redraw the form; typing only refreshes the preview.
+  document.addEventListener("change", function (ev) {
+    var el = ev.target;
+    if (!draft || !el || !el.getAttribute || !el.getAttribute("data-field") || el.tagName !== "SELECT") return;
+    var field = el.getAttribute("data-field");
+    var v = el.value;
+    if (field === "age") v = Number(v);
+    setField(draft, field, v);
+    MI.settle(draft, field);
+    rerenderKeepingPlace(field);
+  });
+
+  document.addEventListener("input", function (ev) {
+    var el = ev.target;
+    if (!draft || !el || !el.getAttribute || !el.getAttribute("data-field") || el.tagName !== "INPUT") return;
+    setField(draft, el.getAttribute("data-field"), el.value);
+    var pv = document.getElementById("create-preview");
+    if (pv) pv.innerHTML = previewHTML();
+  });
 
   function beginNew() {
     newState();
@@ -1100,7 +1424,7 @@
     if (view === "loading") { finishLoading(); return; }
     if (ev.key !== "Enter") return;
     var active = document.activeElement;
-    if (active && active !== document.body && /^(BUTTON|SELECT|TEXTAREA|SUMMARY)$/.test(active.tagName)) return;
+    if (active && active !== document.body && /^(BUTTON|SELECT|TEXTAREA|SUMMARY|INPUT)$/.test(active.tagName)) return;
     var primary = screenEl.querySelector("[data-primary]");
     if (primary) { ev.preventDefault(); primary.click(); }
   });

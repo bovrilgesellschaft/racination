@@ -11,6 +11,7 @@
   years    the range of years it may be dated (period garments
            show their year in the portrait, e.g. "1934 day dress").
   weight   how often it turns up (1 = ordinary).
+  mistress true = only the Mistress has it (her style sets which).
   colours, fabrics, details: one of each is chosen when the
            garment is made.
   prose    how the game describes it.     Tokens: {colour} {fabric} {detail}
@@ -150,6 +151,53 @@ window.RACINATION_DATA.wardrobe = {
     { id: "watch", era: "period", slot: "accessory", years: [1930, 1939], weight: 1,
       colours: [""], fabrics: [""],
       details: [["a small wristwatch on a black grosgrain band", "small wristwatch on a black ribbon band"]],
+      prose: "{detail}", portrait: "{detail}" },
+
+    /* ---------- The Mistress's own (never given to residents) ---------- */
+
+    { id: "tailored-costume", era: "period", slot: "dress", years: [1932, 1939], weight: 1, mistress: true,
+      colours: ["navy", "charcoal", "black", "bottle-green", "dove-grey"],
+      fabrics: ["wool barathea", "worsted", "gabardine"],
+      details: [
+        ["the jacket nipped in at the waist and squared at the shoulder", "fitted jacket with padded shoulders"],
+        ["with a double-breasted jacket and a slim skirt", "double-breasted jacket"]
+      ],
+      prose: "a {colour} {fabric} costume, {detail}, cut by a tailor who knew his business",
+      portrait: "{colour} {fabric} {year} tailored skirt suit, {detail}, mid-calf skirt" },
+
+    { id: "tweed-costume", era: "period", slot: "dress", years: [1930, 1939], weight: 1, mistress: true,
+      colours: ["heather", "lovat", "oatmeal", "russet"],
+      fabrics: ["Harris tweed", "herringbone tweed"],
+      details: [
+        ["with a belted Norfolk jacket", "belted Norfolk jacket"],
+        ["with leather buttons and deep pockets", "leather buttons, patch pockets"]
+      ],
+      prose: "a {colour} {fabric} costume {detail}, of the kind that outlives its owners",
+      portrait: "{colour} {fabric} {year} tweed skirt suit, {detail}, mid-calf skirt" },
+
+    { id: "lace-frock", era: "period", slot: "dress", years: [1930, 1939], weight: 1, mistress: true,
+      colours: ["ivory", "old rose", "eau-de-nil", "lilac"],
+      fabrics: ["silk crêpe", "chiffon"],
+      details: [
+        ["with a lace yoke and long sleeves", "lace yoke, long sleeves"],
+        ["with a tiered skirt and a velvet sash", "tiered skirt, velvet sash"]
+      ],
+      prose: "a {colour} {fabric} frock {detail}, cut on the bias so that it pours rather than hangs",
+      portrait: "{colour} {fabric} {year} bias-cut dress with {detail}, mid-calf" },
+
+    { id: "evening-gown", era: "period", slot: "dress", years: [1931, 1939], weight: 1, mistress: true,
+      colours: ["black", "oyster", "claret", "silver-grey"],
+      fabrics: ["bias-cut satin", "silk velvet"],
+      details: [
+        ["with a draped cowl at the back", "draped cowl back"],
+        ["with fluttering cap sleeves", "cap sleeves"]
+      ],
+      prose: "a {colour} {fabric} gown {detail}, falling to the floor, which she wears to breakfast without apology",
+      portrait: "{colour} {fabric} {year} floor-length evening gown with {detail}" },
+
+    { id: "long-gloves", era: "period", slot: "accessory", years: [1930, 1939], weight: 1, mistress: true,
+      colours: [""], fabrics: [""],
+      details: [["long kid gloves to above the elbow", "long kid evening gloves"]],
       prose: "{detail}", portrait: "{detail}" },
 
     /* ---------- The Pit ---------- */

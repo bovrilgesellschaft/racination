@@ -2,6 +2,7 @@
   RACINATION — household.js
   Milestone 2: making residents, describing them, dressing them,
   writing their portrait descriptions, and moving their meters each week.
+  Milestone 3: the same descriptions serve the Mistress (see mistress.js).
 
   The words and numbers it uses live in the data folder:
   data/appearance.js, data/wardrobe.js and data/residents.js.
@@ -190,7 +191,7 @@
 
   function garmentFor(slot, era, bgName) {
     var pool = W.garments.filter(function (d) {
-      return d.slot === slot && d.era === era && (!d.background || d.background === bgName);
+      return d.slot === slot && d.era === era && !d.mistress && (!d.background || d.background === bgName);
     });
     if (!pool.length) return null;
     return weighted(pool, function (d) {
@@ -438,6 +439,11 @@
 
   function moodOf(r) {
     var m = r.meters;
+    if (r.isMistress) {
+      if (m.doubt >= 55 || m.doubt > m.conviction + 10) return "troubled";
+      if (m.conviction >= 75 && m.doubt < 40) return "radiant";
+      return "content";
+    }
     if (m.racination < 30) return "pit";
     if (m.doubt >= 55) return "troubled";
     if (m.racination >= 75 && m.doubt < 40) return "radiant";
@@ -491,6 +497,7 @@
 
   function polarityNote(r) {
     var tone = opt(A.hairColour, r.looks.hairColour).tone;
+    if (r.isMistress) return tone === "fair" ? ((D.mistress && D.mistress.fairHairNote) || A.polarityNotes.brunetteFair) : "";
     if (r.polarity === "blonde" && tone === "dark") return A.polarityNotes.blondeDark;
     if (r.polarity === "brunette" && tone === "fair") return A.polarityNotes.brunetteFair;
     return "";
@@ -550,8 +557,9 @@
       opt(A.eyeShape, L.eyeShape).portrait + " " + opt(A.eyeColour, L.eyeColour).portrait + " eyes",
       opt(A.eyebrows, L.eyebrows).portrait,
       opt(A.lips, L.lips).portrait + (mk ? ", " + mk : ""),
+      r.markPortrait || "",
       expression(r).portrait
-    ];
+    ].filter(Boolean);
 
     var worn = outfit(r, season);
     var upper = [], lower = [];
@@ -562,7 +570,7 @@
       else upper.push(p);
     });
     var clothes = capital(upper.join(", ")) + (lower.length ? "; " + lower.join(", ") : "");
-    var setting = capital(duty(r.duty).setting || "Victorian rectory drawing room");
+    var setting = capital(r.setting || duty(r.duty).setting || "Victorian rectory drawing room");
 
     return tidy("Colour studio photograph, three-quarter length. " + bits.join(", ") + ". " + clothes + ". " + setting + ", soft studio light.");
   }
@@ -684,7 +692,16 @@
     skillNames: R.skillNames,
     skills: R.skills,
     polarities: R.polarities,
-    lines: R
+    lines: R,
+
+    // Helpers shared with mistress.js
+    helpers: {
+      pick: function (l) { return pick(l); },
+      randInt: function (a, b) { return randInt(a, b); },
+      clamp: clamp, opt: opt, fill: fill, tidy: tidy, capital: capital,
+      fixedPick: fixedPick, garmentDef: garmentDef, makeGarment: function (d, s) { return makeGarment(d, s); },
+      appearanceProse: appearanceProse, dressProse: dressProse, expression: expression
+    }
   };
 
 })();

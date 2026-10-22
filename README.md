@@ -3,10 +3,12 @@
 A household-management game of devotion, discipline and the Pit, 1983–1989.
 Adults only (18+).
 
-Current build: **Milestone 2, residents.** Eight women with faces, figures,
-wardrobes, meters and duties on the rota, on top of Milestone 1's weekly turn,
-ledger and saving. Each resident's page has a portrait description to copy
-into an image generator.
+Current build: **Milestone 3, the Mistress.** A new game opens on her creation
+screen: name (or a random one), age, appearance from the spreadsheet lists,
+voice, mark, scent, style within the 1930s and background, with a live preview.
+She has her own page, meters and portrait description, and her traits appear
+in the house's lines. Milestone 2's residents, rota and weekly moods, and
+Milestone 1's turn, ledger and saving, are all still here.
 
 ## How to play it
 
@@ -36,6 +38,12 @@ Everything in the `data` folder is for editing:
 - `data/wardrobe.js`: the 1930s and modern garments.
 - `data/residents.js`: names, backgrounds, duties, desires, ties, secrets,
   the weekly drift of the meters, and the household's lines.
+- `data/mistress.js`: the Mistress's creation choices, backgrounds, styles,
+  starting meters, weekly drift and her lines.
+
+Any line of text can mention the Mistress with tokens such as
+`{mistress.name}`, `{mistress.voice}`, `{mistress.hair}`, `{mistress.scent}`,
+`{mistress.mark}`, `{mistress.style}` or `{mistress.background}`.
 
 Each file opens in any text editor (TextEdit on a Mac:
 choose Format → Make Plain Text; Notepad on Windows). Change the words
@@ -45,7 +53,8 @@ shows an error after an edit, look for a missing comma or quotation mark.
 ## Testing tools
 
 On the title screen, **Testing tools** switches on extra buttons: nudging a
-resident's meters, showing her secret, and making a new household. They are
+resident's or the Mistress's meters, showing a resident's secret, making a new
+household, and making the Mistress again. They are
 for checking the game and will be removed before release.
 
 ## Files
@@ -56,6 +65,7 @@ for checking the game and will be removed before release.
 | `style.css` | Colours, fonts and layout |
 | `engine.js` | The turn, the screens, money, saving |
 | `household.js` | Making, describing and dressing residents; their weekly meters |
+| `mistress.js` | The Mistress: creation choices, description, tokens, her weekly meters |
 | `data/` | Figures and words you can edit |
 | `fonts/` | The two fonts and their licences |
 

@@ -57,6 +57,8 @@ window.RACINATION_DATA.house = {
     + "page and written the date at the top of it as though daring the calendar to object.",
 
   // One of these is chosen each Monday, by season.
+  // Any line can use the Mistress's tokens: {mistress.name}, {mistress.voice}, {mistress.hair},
+  // {mistress.scent}, {mistress.mark}, {mistress.style} and the rest (see data/mistress.js).
   matinsLines: {
     winter: [
       "Frost on the inside of the Morning Room windows, which the house regards as a kind of lace and the ledger regards as coal.",
@@ -89,7 +91,9 @@ window.RACINATION_DATA.house = {
     ],
     any: [
       "Nothing of consequence occurred, which in the present century is itself a small miracle, and was entered as such.",
-      "The bell was rung at the proper hours and the proper hours were kept. The Housekeeper notes it as if it were news, and in 1980s England perhaps it is."
+      "The bell was rung at the proper hours and the proper hours were kept. The Housekeeper notes it as if it were news, and in 1980s England perhaps it is.",
+      "The scent of {mistress.scent} on the back stairs told the house that {mistress.name} had been up before the bell.",
+      "{mistress.name} read the lesson at Matins in her {mistress.voice} voice, and the household sat up straighter for it."
     ]
   },
 
@@ -99,7 +103,8 @@ window.RACINATION_DATA.house = {
     "The week's figures were added twice, as the Housekeeper does not trust a sum that agrees with itself the first time.",
     "The ledger was blotted, closed and put back in the bureau, where it sits like a conscience with a brass lock.",
     "Receipts were spiked, bills were filed, and the house went up to bed past the cold landing window.",
-    "The Housekeeper ruled off the week with a red line and a small sigh."
+    "The Housekeeper ruled off the week with a red line and a small sigh.",
+    "{mistress.name} initialled the week's page in green ink and blotted it herself."
   ],
 
   // Shown on the placeholder rota page until Milestone 2.
