@@ -21,17 +21,18 @@
   var DR = window.RACINATION_DRESS;
   var EV = window.RACINATION_EVENTS;
   var IN = window.RACINATION_INTIMACY;
+  var SK = window.RACINATION_SCENEKIT;
 
   var SAVE_KEY = "racination.save.v1";
   var ADULT_KEY = "racination.adult";
   var TESTING_KEY = "racination.testing";
-  var SAVE_VERSION = 7;
+  var SAVE_VERSION = 8;
 
   var screenEl = document.getElementById("screen");
   var borderEl = document.getElementById("border");
   var fileInput = document.getElementById("import-file");
 
-  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !EV || !IN || !DATA.consent || !DATA.romanceEvents || !DATA.events || !DATA.letters || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
+  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !EV || !IN || !SK || !DATA.scenekit || !DATA.consent || !DATA.romanceEvents || !DATA.events || !DATA.letters || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
     screenEl.innerHTML = '<p class="warn">One of the game’s files is missing or has a mistake in it, '
       + "so the game cannot start. If you have just edited a file in the data folder, check it for a missing "
       + "comma or quotation mark.</p>";
@@ -166,6 +167,7 @@
 
   H.setRandom(rand);
   IN.setRandom(rand);
+  SK.setRandom(rand);
 
   function pick(list, avoid) {
     if (!list || !list.length) return "";
@@ -221,6 +223,7 @@
     DR.ensureDress(state);
     EV.ensureEvents(state);
     IN.ensure(state);
+    state.scenes = { current: null };
     return state;
   }
 
@@ -265,6 +268,9 @@
     IN.ensure(s);
     if (!s.rules.houseWord) s.rules.houseWord = "honoured";
     if (s.version < 7) s.version = 7;
+    // Milestone 7: the Scene Kit.
+    if (!s.scenes) s.scenes = { current: null };
+    if (s.version < 8) s.version = 8;
     if (!Array.isArray(s.departed)) s.departed = [];
     if (typeof s.nextId !== "number") s.nextId = s.residents.length + 1;
     return s;
@@ -574,6 +580,7 @@
       + (state.mistress ? '<button data-act="mistress">Mistress</button>' : "")
       + '<button data-act="household">Household</button>'
       + (state.romance ? '<button data-act="bonds">Bonds</button>' : "")
+      + '<button data-act="settings">Settings</button>'
       + (state.house ? '<button data-act="house">House</button>' : "")
       + (state.house ? '<button data-act="rules">Rules</button>' : "")
       + (state.house ? '<button data-act="wardrobe">Wardrobe</button>' : "")
@@ -653,7 +660,7 @@
       + '<button data-act="import">Load a save file</button>'
       + "</div>"
       + (saved ? '<p class="note small">' + esc(savedNote) + "</p>" : "")
-      + '<p class="small"><button class="tiny" data-act="testing">Testing tools: ' + (testing ? "on" : "off") + "</button></p>"
+      + '<p class="small"><button class="tiny" data-act="settings">Settings</button> <button class="tiny" data-act="testing">Testing tools: ' + (testing ? "on" : "off") + "</button></p>"
       + "</div>";
   }
 
@@ -1254,7 +1261,7 @@
       + '<div class="pane">' + (state.residents.length ? rows : "<p>The house is empty.</p>") + "</div>"
       + '<details class="pane notes"><summary>About the evenings</summary><ul>' + notes + "</ul></details>"
       + '<h2 class="band blue">Courtship</h2>'
-      + '<div class="pane">' + courtshipList() + courtForm + "</div>"
+      + '<div class="pane">' + courtshipList() + courtshipOffers() + courtForm + "</div>"
       + '<h2 class="band black">The rite</h2>'
       + '<div class="pane">'
       + (rite ? '<p>A hearing is open. <button data-act="open-rite">Return to it</button></p>' : "")
@@ -1277,7 +1284,7 @@
     var C6 = IN.data;
     var body = "";
     if (rite.stage === "done") {
-      body = '<div class="pane"><p>' + esc(T(rite.text)) + "</p></div>"
+      body = '<div class="pane"><p>' + esc(T(rite.sceneDone ? (rite.after || "") : rite.text)) + "</p></div>"
         + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the evenings</button></div>';
     } else {
       var lines = rite.lines.map(function (l) { return "<p>" + esc(T(l)) + "</p>"; }).join("");
@@ -1368,6 +1375,148 @@
       + test + "</div>";
   }
 
+  /* ---------- The Scene Kit: scenes and Settings (Milestone 7) ---------- */
+
+  var settingsFrom = null;
+
+  function courtshipScene(a, b, kind) {
+    var c = IN.courtshipBetween(state, a, b);
+    if (!c) return false;
+    var withM = c.a === IN.MISTRESS || c.b === IN.MISTRESS;
+    var partnerId = c.a === IN.MISTRESS ? c.b : c.a;
+    var beloved = withM ? { kind: "mistress" } : { kind: "resident", id: partnerId === c.a ? c.b : c.a };
+    var reasons = c.reasons || {};
+    var free = Object.keys(reasons).every(function (k) { return IN.isFree(reasons[k]); });
+    var stage = c.bonded ? "bonded" : String(IN.data.stages[IN.stageOf(c.progress)] || "Admiration").toLowerCase();
+    var trigger = kind === "bonding" ? "bonding" : "courtship";
+    var ok = SK.start(state, {
+      trigger: trigger,
+      params: { "with": withM ? "mistress" : "resident", stage: stage, season: currentSeason() },
+      cast: { mistress: { kind: "mistress" }, partner: { kind: "resident", id: partnerId }, beloved: beloved },
+      free: free, toggle: "romance", after: { kind: trigger, a: c.a, b: c.b }
+    });
+    if (ok) {
+      if (kind === "bonding") c.nightDone = true;
+      else c.sceneWeek = state.week;
+    }
+    return ok;
+  }
+
+  function finishScene() {
+    var res = SK.finish(state);
+    if (!res) { goView("game"); return; }
+    SK.applyOutcome(state, res);
+    var a = res.after || {};
+    if (a.kind === "rite") {
+      var rite = state.romance.rite;
+      if (rite) {
+        rite.sceneDone = true;
+        if (res.earlyStop) {
+          IN.trimRite(state);
+          rite.after = SK.data.stoppedEarly + " " + (rite.after || "");
+        }
+      }
+      saveGame();
+      goView("rite");
+      return;
+    }
+    if (a.kind === "guest") setFlash(T(a.text));
+    saveGame();
+    goView("game");
+  }
+
+  function courtshipOffers() {
+    if (!IN.gatesOpen(state) || !SK.settings().romance) return "";
+    var O = SK.data.offers;
+    var rows = state.romance.courtships.filter(function (c) { return c.courting || c.bonded; }).map(function (c) {
+      var withM = c.a === IN.MISTRESS || c.b === IN.MISTRESS;
+      var aName = c.a === IN.MISTRESS ? MI.displayName(state.mistress) : (resident(c.a) ? H.displayName(resident(c.a)) : "");
+      var bName = c.b === IN.MISTRESS ? MI.displayName(state.mistress) : (resident(c.b) ? H.displayName(resident(c.b)) : "");
+      var night = c.bonded && c.nightOffered != null && !c.nightDone && state.week - c.nightOffered < (SK.data.offerWeeks || 2);
+      var btn;
+      if (night) btn = '<button data-act="court-scene" data-kind="bonding" data-a="' + c.a + '" data-b="' + c.b + '">' + esc(O.bonding) + "</button>";
+      else btn = '<button data-act="court-scene" data-kind="courtship" data-a="' + c.a + '" data-b="' + c.b + '"'
+        + (c.sceneWeek === state.week ? " disabled" : "") + ">" + esc(withM ? O.mistress : O.courtship) + "</button>";
+      return '<div class="rota-row"><div class="rota-who">' + esc(aName) + " and " + esc(bName) + "</div>"
+        + '<div class="rota-duty">' + btn + "</div></div>";
+    }).join("");
+    return rows ? '<div class="offers">' + rows + '<p class="small note">One evening a week for each couple.</p></div>' : "";
+  }
+
+  function viewScene() {
+    var v = SK.view(state);
+    if (!v) {
+      if (state.scenes) state.scenes.current = null;
+      return statusBar() + '<div class="body"><div class="pane"><p>The door is closed.</p></div>'
+        + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div></div>';
+    }
+    var paras = v.paragraphs.map(function (p) { return "<p>" + esc(T(p)) + "</p>"; }).join("");
+    var choices = v.choices.map(function (c, i) {
+      return '<button data-act="scene-choice" data-index="' + c.index + '"' + (c.stop ? ' class="stop"' : (i === 0 ? ' class="primary" data-primary' : "")) + ">" + esc(c.label) + "</button>";
+    }).join("");
+    return '<div class="status"><span class="house">' + esc(HOUSE.name) + "</span><span>" + esc(shortDate(mondayOf(Math.min(state.week, TOTAL_WEEKS - 1)))) + "</span></div>"
+      + '<div class="body">'
+      + '<h2 class="band black">' + esc(T(v.title)) + "</h2>"
+      + '<div class="pane scene-pane">' + paras + "</div>"
+      + '<div class="actions stack scene-choices">' + choices + "</div>"
+      + (testing ? '<p class="small note">Testing: shown at ' + esc(SK.data.tiers[v.tier] ? SK.data.tiers[v.tier].label : v.tier) + (v.fade ? " (fade path)" : "") + ".</p>" : "")
+      + "</div>";
+  }
+
+  function viewSettings() {
+    var st = SK.settings();
+    var top = SK.topTier();
+    var tiers = SK.TIERS.map(function (t) {
+      var d = SK.data.tiers[t];
+      var isCur = t === top;
+      var locked = t === "author" && !SK.authorAllowed();
+      return '<div class="rule-option' + (isCur ? " current" : "") + '">'
+        + (locked ? '<button data-act="author-ask">' + esc(d.label) + "</button>"
+          : '<button data-act="set-tier" data-tier="' + t + '"' + (isCur ? " disabled" : "") + ">" + esc(d.label) + "</button>")
+        + '<span class="small">' + esc(d.note) + (isCur ? ' <span class="note">In use</span>' : "") + (locked ? ' <span class="note">Needs confirming</span>' : "") + "</span></div>";
+    }).join("");
+    var lib = SK.library();
+    var toggles = [["discipline", "Discipline scenes", "Rites play as scenes. Off: a short summary instead."],
+                   ["romance", "Romance scenes", "Courtship evenings and bonding nights play as scenes. Off: they happen off the page."]]
+      .map(function (x) {
+        var on = st[x[0]];
+        return '<div class="rule-option' + (on ? " current" : "") + '"><button data-act="toggle" data-toggle="' + x[0] + '">'
+          + esc(x[1]) + ": " + (on ? "on" : "off") + '</button><span class="small">' + esc(x[2]) + "</span></div>";
+      }).join("");
+    return (state ? statusBar() : titleArt()) + takeFlash()
+      + '<div class="body">'
+      + '<h2 class="band magenta">Settings</h2>'
+      + '<p class="dateline">Kept in this browser, for every game</p>'
+      + '<div class="pane create">'
+      + '<fieldset class="create-section"><legend>Scenes</legend>'
+      + '<p class="small note">Each part of a scene shows the highest tier you have chosen that has text, and falls back to the tier below when a part is empty.</p>'
+      + tiers
+      + (SK.authorAllowed() ? '<div class="actions"><button data-act="author-off">Withdraw the Author confirmation</button></div>' : "")
+      + '<p class="small note">' + (lib.authored ? "authored.js is present, with Author text in " + lib.authoredPlaces + (lib.authoredPlaces === 1 ? " place." : " places.")
+        : "authored.js is not present, so the Author tier shows Candlelight text.") + "</p>"
+      + "</fieldset>"
+      + '<fieldset class="create-section"><legend>Content</legend>' + toggles + "</fieldset>"
+      + '<fieldset class="create-section"><legend>For the author</legend>'
+      + '<p class="small">The preview page reads any scene under any setting without playing a run.</p>'
+      + '<div class="actions"><a class="button" href="preview.html" target="_blank" rel="noopener">Open the preview page</a>'
+      + '<button data-act="check-scenes">Check the scene files</button></div></fieldset>'
+      + "</div>"
+      + '<div class="actions"><button class="primary" data-act="settings-back" data-primary>Back</button></div>'
+      + "</div>";
+  }
+
+  function viewAuthorConfirm() {
+    return (state ? statusBar() : titleArt())
+      + '<div class="body">'
+      + '<h2 class="band black">The Author tier</h2>'
+      + '<div class="pane"><p>The Author tier shows text written by the game’s designer and kept in a separate file, authored.js. '
+      + "It may be fully explicit. It never plays where a woman’s consent was not freely given, and never once the house has gone wrong.</p>"
+      + "<p>Please confirm that you are 18 or over and that you want it switched on. You can switch it off again in Settings.</p></div>"
+      + '<div class="actions"><button class="danger" data-act="author-yes">I am 18 or over: switch it on</button>'
+      + '<button data-act="settings" data-primary>Back</button></div>'
+      + "</div>";
+  }
+
   /* ---------- The house: rooms ---------- */
 
   function viewHouse() {
@@ -1445,7 +1594,8 @@
         + EV.all().map(function (e) { return '<option value="' + esc(e.id) + '">' + esc((e.kind === "letter" ? "Letter: " : (e.kind === "visitor" ? "Visitor: " : "Incident: ")) + e.title) + "</option>"; }).join("")
         + "</select></label>"
         + '<button data-act="fire-event">Fire it</button>'
-        + '<button data-act="check-events">Check the event files</button></div>' : "")
+        + '<button data-act="check-events">Check the event files</button>'
+        + '<button data-act="check-scenes">Check the scene files</button></div>' : "")
       + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div>'
       + "</div>";
   }
@@ -1832,6 +1982,9 @@
       case "wardrobe": html = viewWardrobe(); break;
       case "resident": html = viewResident(); break;
       case "rite": html = viewRite(); break;
+      case "scene": html = viewScene(); break;
+      case "settings": html = viewSettings(); break;
+      case "author-confirm": html = viewAuthorConfirm(); break;
       case "bonds": html = viewBonds(); break;
       case "mistress": html = state.mistress ? viewMistress() : viewCreate(); break;
       case "game":
@@ -2014,6 +2167,15 @@
           insist: name === "insist-rite"
         });
         if (!kr.ok) setFlash(kr.why, true);
+        else if (kr.scene) {
+          var rite0 = state.romance.rite;
+          var cast = { mistress: { kind: "mistress" }, partner: { kind: "resident", id: rite0.rid },
+            presider: rite0.presider === "housekeeper" && state.housekeeper != null ? { kind: "resident", id: state.housekeeper } : { kind: "mistress" } };
+          if (SK.start(state, { trigger: "rite", params: kr.scene.params, cast: cast, free: kr.scene.free, wordAt: kr.scene.wordAt,
+            toggle: "discipline", after: { kind: "rite" } })) {
+            saveGame(); goView("scene"); break;
+          }
+        }
         saveGame();
         goView("rite"); break;
       case "close-hearing":
@@ -2023,7 +2185,39 @@
       case "guest-rite":
         var gr = IN.offerGuestRite(state, Number(el.getAttribute("data-index")));
         if (!gr.ok) setFlash(gr.why, true);
-        else { saveGame(); setFlash(gr.text); }
+        else if (gr.scene && SK.start(state, { trigger: "guestrite", params: gr.scene.params,
+          cast: { mistress: { kind: "mistress" }, guest: { kind: "guest", id: Number(el.getAttribute("data-index")) } },
+          free: gr.scene.free, toggle: "discipline", after: { kind: "guest", text: gr.text } })) {
+          saveGame(); goView("scene"); break;
+        } else { saveGame(); setFlash(gr.text); }
+        rerenderKeepingPlace(); break;
+      case "court-scene":
+        var cs = courtshipScene(Number(el.getAttribute("data-a")), Number(el.getAttribute("data-b")), el.getAttribute("data-kind"));
+        if (cs) { saveGame(); goView("scene"); }
+        else { setFlash("There is no scene for that evening.", true); rerenderKeepingPlace(); }
+        break;
+      case "scene-choice":
+        SK.choose(state, Number(el.getAttribute("data-index")));
+        var run = SK.current(state);
+        if (run && run.done) { finishScene(); break; }
+        saveGame();
+        render(); window.scrollTo(0, 0); break;
+      case "settings": settingsFrom = view === "settings" || view === "author-confirm" ? settingsFrom : view; goView("settings"); break;
+      case "settings-back": goView(settingsFrom === "title" || !state ? "title" : (settingsFrom || "game")); break;
+      case "set-tier":
+        var tw = SK.setTier(el.getAttribute("data-tier"));
+        if (tw) setFlash(tw, true);
+        rerenderKeepingPlace(); break;
+      case "author-ask": goView("author-confirm"); break;
+      case "author-yes": SK.confirmAuthor(); setFlash("The Author tier is on."); goView("settings"); break;
+      case "author-off": SK.revokeAuthor(); setFlash("The Author tier is off, and its confirmation withdrawn."); rerenderKeepingPlace(); break;
+      case "toggle":
+        var tg = el.getAttribute("data-toggle");
+        SK.setToggle(tg, !SK.settings()[tg]);
+        rerenderKeepingPlace(); break;
+      case "check-scenes":
+        var sc = SK.check();
+        setFlash(sc.problems.length ? "Problems in the scene files: " + sc.problems.join(" | ") : "The scene files are in order: " + sc.scenes + " scenes, no problems found. " + sc.notes.filter(function (n) { return /authored/.test(n); }).join(" "), !!sc.problems.length);
         rerenderKeepingPlace(); break;
       case "choose-event":
         var ce = EV.choose(state, Number(el.getAttribute("data-key")), Number(el.getAttribute("data-index")), rand);

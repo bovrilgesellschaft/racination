@@ -418,6 +418,7 @@
     var t = { name: H.displayName(r), first: r.first, presider: presiderName(state, rite), fault: rite.fault };
     var lines = rite.lines.slice();
     var aftercare = opts.aftercare !== false;
+    var ceremony = null, wordLine = null;
     var outcome, scale = measure.weight * (hk ? C.housekeeperFactor : 1);
     var hardHarm = false;
 
@@ -430,7 +431,8 @@
       r.harmDependency = (r.harmDependency || 0) + (C.outcomes.harm.dependency || 0);
       hardHarm = true;
     } else {
-      lines.push(pickFrom(C.lines.rite));
+      var ceremony = pickFrom(C.lines.rite);
+      lines.push(ceremony);
       var beyond = mi > r.consent.measure;
       if (beyond) {
         var honoured = !state.rules || state.rules.houseWord !== "sparingly";
@@ -438,7 +440,8 @@
         var saysWord = honoured || rand() < (RU.sparinglySaysWord != null ? RU.sparinglySaysWord : 0.5);
         if (saysWord) {
           // The house word: it always stops the rite, and always leads to aftercare.
-          lines.push(fill(C.lines.houseWord, t));
+          var wordLine = fill(C.lines.houseWord, t);
+          lines.push(wordLine);
           r.consent.known.measure = true;
           adjust(r, { doubt: C.houseWordDoubt });
           aftercare = true;
@@ -471,6 +474,7 @@
           fx.doubt += C.skippedAftercareDoubt;
         }
         adjust(r, fx);
+        rite.gain = { racination: Math.max(0, fx.racination), devotion: Math.max(0, fx.devotion) };
         if (hk && !isExtracted(reason)) adjust(hk, { devotion: 0.5 });
         lines.push(fill(believedLine(reason), t));
         r.lastYes = { area: "rite", week: state.week, believed: believedWord(reason) };
@@ -494,8 +498,34 @@
     rite.measure = measure.id;
     rite.stage = "done";
     rite.text = lines.join(" ");
+    // After a scene has played the ceremony, only what followed it needs saying (Milestone 7).
+    rite.after = lines.filter(function (l, i) { return i >= rite.lines.length && l !== ceremony && l !== wordLine; }).join(" ");
     note(state, "A rite: " + H.displayName(r), rite.text);
-    return { ok: true };
+    if (hardHarm) return { ok: true };
+    return {
+      ok: true,
+      scene: {
+        trigger: "rite",
+        params: { measure: measure.id, petition: rite.petition ? "yes" : "no", presider: rite.presider },
+        free: isFree(rite.reason),
+        wordAt: rite.stopped ? 1 : 0
+      }
+    };
+  }
+
+  // The Mistress stopped the scene early: the rite is left unfinished, and half its gains go with it.
+  function trimRite(state) {
+    var rite = state.romance.rite;
+    if (!rite || rite.trimmed) return;
+    rite.trimmed = true;
+    var r = findResident(state, rite.rid);
+    if (r && rite.gain) adjust(r, { racination: -rite.gain.racination / 2, devotion: -rite.gain.devotion / 2 });
+  }
+
+  // A scene's outcome line can nudge a courtship along (capped by the Scene Kit).
+  function addProgress(state, a, b, n) {
+    var c = courtshipBetween(state, a, b);
+    if (c && !c.bonded && c.courting) c.progress = Math.max(0, c.progress + n);
   }
 
   /* ============================================================
@@ -542,6 +572,8 @@
       if (enjoyed) state.romance.guestCircle = (state.romance.guestCircle || 0) + C.guestCirclePull;
       hs.pit = clamp(hs.pit + C.guestRitePit, 0, 100);
       text = fill(enjoyed ? C.guestLines.enjoyed : C.guestLines.disliked, t);
+      note(state, "A guest's rite", text);
+      return { ok: true, text: text, scene: { trigger: "guestrite", params: { interest: interest }, free: true } };
     }
     note(state, "A guest's rite", text);
     return { ok: true, text: text };
@@ -790,11 +822,11 @@
     var r = findResident(state, p.resident);
     if (fx.bond && r && p.other != null) {
       var c = courtshipBetween(state, r.id, p.other);
-      if (c) { c.bonded = true; c.courting = false; c.bondedWeek = state.week; }
+      if (c) { c.bonded = true; c.courting = false; c.bondedWeek = state.week; c.nightOffered = state.week; }
     }
     if (fx.bondMistress && r) {
       var cm = courtshipBetween(state, r.id, MISTRESS);
-      if (cm) { cm.bonded = true; cm.courting = false; cm.bondedWeek = state.week; }
+      if (cm) { cm.bonded = true; cm.courting = false; cm.bondedWeek = state.week; cm.nightOffered = state.week; }
     }
     if (fx.breakBond && r) {
       R.courtships = R.courtships.filter(function (c) { return !(c.bonded && (c.a === r.id || c.b === r.id)); });
@@ -904,7 +936,11 @@
     describeCourtships: describeCourtships,
     coolLine: coolLine,
     isExtracted: isExtracted,
-    isFree: isFree
+    isFree: isFree,
+    trimRite: trimRite,
+    addProgress: addProgress,
+    courtshipBetween: courtshipBetween,
+    stageOf: stageOf
   };
 
 })();

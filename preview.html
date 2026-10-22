@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Racination: Scene Preview</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .tiertag { font-size: 0.75em; padding: 0 0.4em; margin-right: 0.4em; color: var(--bwhite); background: var(--black); white-space: nowrap; }
+    .tiertag.candlelight { background: var(--magenta); }
+    .tiertag.author { background: var(--red); }
+    .tiertag.fell { outline: 2px dashed var(--red); }
+    .preview-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 0.8em; }
+    @media (max-width: 600px) { .preview-controls { grid-template-columns: 1fr; } }
+    .beat-head { font-family: var(--display); color: var(--red); font-size: 1.2em; margin: 0.8em 0 0.2em; }
+    .choicelist { font-size: 0.9em; color: var(--blue); }
+    .problems li { margin-bottom: 0.3em; }
+  </style>
+</head>
+<body>
+  <div id="border">
+    <main id="screen">
+      <p style="padding:1em">Loading the preview&hellip; If this message stays, check that the game's files are all in one folder.</p>
+    </main>
+  </div>
+
+  <script src="data/house.js"></script>
+  <script src="data/scenekit.js"></script>
+  <script src="scenes/list.js"></script>
+  <script src="scenekit.js"></script>
+  <script>
+  /*
+    The Scene Preview: read any scene under any setting without playing a run.
+    Uses sample women for the tokens. Nothing here touches a saved game.
+  */
+  (function () {
+    "use strict";
+    var SK = window.RACINATION_SCENEKIT;
+    var screen = document.getElementById("screen");
+    if (!SK) { screen.innerHTML = '<p class="warn">The Scene Kit did not load. Check that scenekit.js and data/scenekit.js are in place.</p>'; return; }
+    var K = SK.data;
+
+    // Sample women for the tokens.
+    var SAMPLE = {
+      partner: { name: "Miss Pell", first: "Constance", surname: "Pell", title: "Miss", polarity: "blonde", hair: "pale blonde", eyes: "grey", houseword: "Quince" },
+      beloved: { name: "Miss Ashdown", first: "Harriet", surname: "Ashdown", title: "Miss", polarity: "brunette", hair: "chestnut", eyes: "brown", houseword: "Wren" },
+      presider: { name: "Mrs Hallam", first: "Imogen", surname: "Hallam", title: "Mrs", polarity: "brunette", hair: "dark brown", eyes: "hazel", houseword: "" },
+      guest: { name: "Miss Rudd", first: "Joan", surname: "Rudd", title: "Miss", polarity: "", hair: "", eyes: "", houseword: "", job: "a librarian", town: "Swindon" },
+      mistress: { name: "Mrs Hallam", first: "Imogen", surname: "Hallam", title: "Mrs", hair: "dark brown", hairStyle: "a low chignon", eyes: "hazel",
+        height: "tall", build: "slender", voice: "low", mark: "spectacles", scent: "Shalimar", style: "severe tailoring", background: "lapsed academic", age: "44", nationality: "English" }
+    };
+
+    var ui = { scene: null, tier: "candlelight", free: true, word: false, mode: "step", params: {}, authorOK: false, run: null, checked: null };
+
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function fill(text, s) {
+      var t = {};
+      Object.keys(SAMPLE).forEach(function (role) {
+        Object.keys(SAMPLE[role]).forEach(function (k) { t[role + "." + k] = SAMPLE[role][k]; });
+      });
+      t.houseword = SAMPLE.partner.houseword;
+      t.room = (s && s.room) || "the Study";
+      t.season = ui.params.season || "spring";
+      t.planet = ui.params.planet || "Venus";
+      t.house = (window.RACINATION_DATA.house && window.RACINATION_DATA.house.name) || "the house";
+      return String(text || "").replace(/\{(\w+(?:\.\w+)?)\}/g, function (m, k) { return t[k] != null ? t[k] : m; });
+    }
+
+    function paras(text) {
+      return String(text || "").split(/\n\s*\n/).map(function (p) { return p.replace(/\s*\n\s*/g, " ").trim(); }).filter(Boolean);
+    }
+
+    function lib() { return SK.library(); }
+    function scene() { return lib().scenes[ui.scene] || null; }
+
+    // The condition keys a scene uses, and their values.
+    function condKeys(s) {
+      var keys = {};
+      Object.keys(s.trigger ? s.trigger.params : {}).forEach(function (k) { keys[k] = keys[k] || {}; keys[k][s.trigger.params[k]] = true; });
+      s.order.forEach(function (b) {
+        s.beats[b].choices.forEach(function (c) { if (c.cond) { keys[c.cond.key] = keys[c.cond.key] || {}; keys[c.cond.key][c.cond.value] = true; } });
+      });
+      return keys;
+    }
+
+    function tierShown() { return ui.tier === "author" && !ui.authorOK ? "candlelight" : ui.tier; }
+
+    function beatHTML(s, b, showChoices) {
+      var bt = b === "#houseword" ? { slots: { gaslight: K.houseWord.gaslight, candlelight: K.houseWord.candlelight }, choices: [] }
+        : (s.beats[b] || (b === "aftercare" ? { slots: { gaslight: K.aftercare.gaslight, candlelight: K.aftercare.candlelight }, choices: [], engine: true } : null));
+      if (!bt) return '<p class="warn">No beat called ' + esc(b) + ".</p>";
+      var r = SK.previewText(bt, tierShown(), !ui.free);
+      var label = r.tier ? K.tiers[r.tier].label : "No text";
+      var tag = '<span class="tiertag ' + esc(r.tier) + (r.fellBack ? " fell" : "") + '">' + esc(label) + (r.fellBack ? ", fallen back" : "") + "</span>";
+      var out = '<p class="beat-head">' + esc(b === "#houseword" ? "Her word" : b) + (bt.engine ? " (the engine’s own)" : "") + "</p>";
+      var ps = paras(fill(r.text, s));
+      out += ps.length ? ps.map(function (p, i) { return "<p>" + (i === 0 ? tag : "") + esc(p) + "</p>"; }).join("") : "<p>" + tag + "<em>(empty)</em></p>";
+      if (showChoices) {
+        var cs = bt.choices.map(function (c) {
+          return "<li>" + esc(c.label || K.continueLabel) + " → " + esc(c.to) + (c.cond ? " (only if " + esc(c.cond.key) + " = " + esc(c.cond.value) + ")" : "") + "</li>";
+        });
+        if (b !== "aftercare" && b !== "#houseword" && !bt.choices.some(function (c) { return c.to === "aftercare"; })) cs.push("<li>" + esc(K.stopLabel) + " → aftercare <em>(added by the engine)</em></li>");
+        if (!bt.choices.length && b !== "#houseword") cs.push("<li>" + esc(K.closeLabel) + " <em>(the scene ends)</em></li>");
+        out += '<ul class="choicelist">' + cs.join("") + "</ul>";
+      }
+      return out;
+    }
+
+    function condOK(c) { return !c.cond || String(ui.params[c.cond.key]) === c.cond.value; }
+
+    function startRun() {
+      var s = scene();
+      ui.run = s ? { beat: s.order[0], steps: 0, log: [], done: false } : null;
+    }
+
+    function stepChoices(s) {
+      var run = ui.run;
+      if (run.done) return [];
+      if (run.beat === "#houseword") return [{ label: K.continueLabel, to: "aftercare" }];
+      var bt = s.beats[run.beat];
+      if (!bt) return [{ label: K.closeLabel, to: "end" }];
+      var out = [];
+      var hasStop = false;
+      bt.choices.forEach(function (c) {
+        if (!condOK(c)) return;
+        if (c.to === "aftercare") hasStop = true;
+        out.push({ label: c.label || K.continueLabel, to: c.to });
+      });
+      if (!out.length) out.push({ label: K.closeLabel, to: "end" });
+      if (!hasStop && run.beat !== "aftercare") out.push({ label: K.stopLabel, to: "aftercare", stop: true });
+      return out;
+    }
+
+    function stepGo(to) {
+      var run = ui.run;
+      run.log.push(run.beat);
+      run.steps++;
+      if (to === "end") { run.done = true; return; }
+      if (to !== "aftercare" && ui.word && run.beat !== "#houseword") { run.beat = "#houseword"; return; }
+      run.beat = to;
+    }
+
+    function render() {
+      var L = lib();
+      var s = scene();
+      var opts = L.ids.map(function (id) {
+        return '<option value="' + esc(id) + '"' + (id === ui.scene ? " selected" : "") + ">" + esc(L.scenes[id].title + " (" + id + ")") + "</option>";
+      }).join("");
+      var tiers = SK.TIERS.map(function (t) {
+        return '<option value="' + t + '"' + (t === ui.tier ? " selected" : "") + ">" + esc(K.tiers[t].label) + (t === "author" && !ui.authorOK ? " (confirm first)" : "") + "</option>";
+      }).join("");
+      var condHTML = "";
+      if (s) {
+        var keys = condKeys(s);
+        condHTML = Object.keys(keys).map(function (k) {
+          var vals = Object.keys(keys[k]);
+          if (ui.params[k] == null) ui.params[k] = vals[0];
+          return '<label class="field"><span>' + esc(k) + '</span><select data-param="' + esc(k) + '">'
+            + vals.map(function (v) { return '<option' + (String(ui.params[k]) === v ? " selected" : "") + ">" + esc(v) + "</option>"; }).join("") + "</select></label>";
+        }).join("");
+      }
+
+      var body = "";
+      if (!s) body = "<p>There are no scenes to show.</p>";
+      else if (ui.mode === "all") {
+        body = s.order.map(function (b) { return beatHTML(s, b, true); }).join("")
+          + (s.beats.aftercare ? "" : beatHTML(s, "aftercare", true));
+      } else {
+        if (!ui.run) startRun();
+        var trail = ui.run.log.map(function (b) { return b === "#houseword" ? "her word" : b; }).join(" → ");
+        body = (trail ? '<p class="small note">So far: ' + esc(trail) + "</p>" : "")
+          + (ui.run.done ? "<p><em>The scene has ended.</em></p>" : beatHTML(s, ui.run.beat, false))
+          + '<div class="actions stack scene-choices">'
+          + stepChoices(s).map(function (c, i) {
+            return '<button data-go="' + esc(c.to) + '"' + (c.stop ? ' class="stop"' : (i === 0 ? ' class="primary"' : "")) + ">" + esc(fill(c.label, s)) + "</button>";
+          }).join("")
+          + '<button data-act="restart">Start again</button></div>';
+      }
+
+      var check = "";
+      if (ui.checked) {
+        check = '<h2 class="band black">Scene checker</h2><div class="pane">'
+          + (ui.checked.problems.length ? '<p class="warn">' + ui.checked.problems.length + " problem" + (ui.checked.problems.length === 1 ? "" : "s") + ':</p><ul class="problems">'
+            + ui.checked.problems.map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("") + "</ul>"
+            : "<p>No problems found in " + ui.checked.scenes + " scenes.</p>")
+          + (ui.checked.notes.length ? '<p class="small">Notes:</p><ul class="problems small">' + ui.checked.notes.map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("") + "</ul>" : "")
+          + "</div>";
+      }
+
+      screen.innerHTML = '<div class="status"><span class="house">Racination</span><span>Scene Preview</span></div>'
+        + '<div class="body">'
+        + '<h2 class="band magenta">Scene Preview</h2>'
+        + '<p class="dateline">Read any scene under any setting. Nothing here touches a saved game.</p>'
+        + '<div class="pane create"><div class="preview-controls">'
+        + '<label class="field"><span>Scene</span><select id="pv-scene">' + opts + "</select></label>"
+        + '<label class="field"><span>Tier</span><select id="pv-tier">' + tiers + "</select></label>"
+        + '<label class="field"><span>Her consent</span><select id="pv-free"><option value="yes"' + (ui.free ? " selected" : "") + '>Freely given</option><option value="no"' + (ui.free ? "" : " selected") + ">Not freely given (fade path)</option></select></label>"
+        + '<label class="field"><span>Her limit</span><select id="pv-word"><option value="no"' + (ui.word ? "" : " selected") + '>Within it</option><option value="yes"' + (ui.word ? " selected" : "") + ">Past it (her word arrives)</option></select></label>"
+        + '<label class="field"><span>Show</span><select id="pv-mode"><option value="step"' + (ui.mode === "step" ? " selected" : "") + '>Step through</option><option value="all"' + (ui.mode === "all" ? " selected" : "") + ">Every beat at once</option></select></label>"
+        + condHTML
+        + "</div>"
+        + (ui.authorOK ? '<p class="small note">The Author tier is confirmed for this visit.</p>'
+          : '<p class="small note">The Author tier shows text from authored.js, which may be fully explicit. <button class="tiny" data-act="author">I am 18 or over: allow it for this visit</button></p>')
+        + '<p class="small note">' + (L.authored ? "authored.js is present, with Author text in " + L.authoredPlaces + (L.authoredPlaces === 1 ? " beat." : " beats.") : "authored.js is not present.")
+        + " Tags show which tier each beat’s text came from; a dashed outline means it fell back to a lower tier.</p>"
+        + '<div class="actions"><button data-act="check">Check the scene files</button><button data-act="template">Download an authored.js template</button></div>'
+        + "</div>"
+        + (s ? '<h2 class="band black">' + esc(fill(s.title, s)) + "</h2>"
+          + '<p class="dateline">' + esc(s.file) + " · trigger: " + esc(s.triggerText || "none") + " · participants: " + esc(s.participants.join(", ")) + "</p>" : "")
+        + '<div class="pane scene-pane">' + body + "</div>"
+        + check
+        + "</div>";
+    }
+
+    function download(name, text) {
+      try {
+        var blob = new Blob([text], { type: "text/javascript" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      } catch (e) { alert("This browser would not save the file."); }
+    }
+
+    document.addEventListener("change", function (ev) {
+      var el = ev.target;
+      if (el.id === "pv-scene") { ui.scene = el.value; ui.params = {}; ui.run = null; }
+      else if (el.id === "pv-tier") { ui.tier = el.value; }
+      else if (el.id === "pv-free") { ui.free = el.value === "yes"; }
+      else if (el.id === "pv-word") { ui.word = el.value === "yes"; ui.run = null; }
+      else if (el.id === "pv-mode") { ui.mode = el.value; ui.run = null; }
+      else if (el.getAttribute("data-param")) { ui.params[el.getAttribute("data-param")] = el.value; ui.run = null; }
+      render();
+    });
+
+    document.addEventListener("click", function (ev) {
+      var el = ev.target.closest ? ev.target.closest("button") : null;
+      if (!el) return;
+      var go = el.getAttribute("data-go");
+      if (go) { stepGo(go); render(); return; }
+      var act = el.getAttribute("data-act");
+      if (act === "restart") { ui.run = null; render(); }
+      else if (act === "author") { ui.authorOK = true; render(); }
+      else if (act === "check") { ui.checked = SK.check(); render(); }
+      else if (act === "template") { download("authored-template.js", SK.authoredTemplate()); }
+    });
+
+    var L = SK.load();
+    ui.scene = L.ids[0] || null;
+    render();
+  })();
+  </script>
+</body>
+</html>

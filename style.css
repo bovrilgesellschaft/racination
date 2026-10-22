@@ -712,3 +712,17 @@ label.check { display: flex; gap: 0.5em; align-items: center; margin: 0.6em 0; }
 label.check input { width: 1.2em; height: 1.2em; accent-color: var(--magenta); }
 #rite-measure, #charge-fault { max-width: 100%; }
 .rota-duty select.evening { max-width: 100%; }
+
+/* Milestone 7: the Scene Kit */
+a.button {
+  display: inline-block;
+  font-family: var(--text); font-size: 1em; line-height: 1.1;
+  background: var(--black); color: var(--bwhite);
+  padding: 0.2em 0.8em; text-decoration: none;
+}
+a.button:hover, a.button:focus-visible { background: var(--byellow); color: var(--black); outline: 2px solid var(--black); }
+.scene-pane p { line-height: 1.45; }
+.scene-choices button { text-align: left; }
+button.stop { background: var(--magenta); color: var(--bwhite); }
+button.stop:hover, button.stop:focus-visible { background: var(--byellow); color: var(--black); }
+.offers { margin: 0.6em 0; }

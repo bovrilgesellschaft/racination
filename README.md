@@ -3,19 +3,14 @@
 A household-management game of devotion, discipline and the Pit, 1983–1989.
 Adults only (18+).
 
-Current build: **Milestone 6, romance, ritual and consent**. A new part of
-each week, the Evenings, comes between the rota and the week's business: each
-woman spends her evening at devotions, dancing, reading aloud, courting, resting,
-or (one a week) talking with the Mistress in the Study. Courtship grows from
-admiration to devotion and may end in a bond; the rite is kept by petition or by
-charge, with a hearing she may contest or withdraw from, a measure, aftercare and
-reconciliation; paying guests may keep a rite too. Behind it all sits a hidden
-consent model, and a hidden ladder for a house that goes wrong, which ends, at
-its worst, in court. Milestones 1 to 5 are all still here.
-
-The rite and courtship are written at Gaslight tier: ceremony, feeling and
-aftermath. Fuller scenes, and the slots for your own Author-tier text, arrive
-with Milestone 7.
+Current build: **Milestone 7, the Author's Scene Kit**. Rites, guests' rites,
+courtship evenings and bonding nights now play as short branching scenes, read
+from files in the `scenes` folder, at the tier chosen in **Settings**: Gaslight
+(fade and implication), Candlelight (sensual, never anatomical) or Author (your
+own text, in `authored.js`, behind an 18+ confirmation). A **preview page**
+(`preview.html`) reads any scene under any setting, and a **scene checker**
+finds mistakes. `WRITING-SCENES.md` explains the format. Milestones 1 to 6 are
+all still here.
 
 ## How to play it
 
@@ -59,6 +54,12 @@ Everything in the `data` folder is for editing:
 - `data/glossary.js`: the house's language and when each term unlocks.
 - `data/consent.js`: the consent model, the Evenings, courtship, the rite and
   its lines, paying guests' rites, and the failure-state ladder.
+- `data/scenekit.js`: the Scene Kit's own words (the stop route, aftercare,
+  her house word) and figures.
+- `scenes/`: the scene files, and `scenes/list.js`, which lists them.
+  **`WRITING-SCENES.md` explains how to write and check them.**
+- `authored.js` (yours, not included): your Author-tier text. The game runs
+  without it.
 - `data/romance.js`: bondings, jealousy, the truth about a yes, amends, and the
   ladder's events (diaries, talk, the police, the trial).
 
@@ -93,6 +94,9 @@ for checking the game and will be removed before release.
 | `rules.js` | House rules, objections, the Housekeeper, contributions |
 | `dress.js` | The Sewing Room, the shops, deliveries and wear |
 | `events.js` | Choosing, showing and resolving events; Belief–Play; the glossary |
+| `scenekit.js` | Reading, checking and playing scenes; tiers and Settings; the scene gates |
+| `preview.html` | The scene preview page |
+| `WRITING-SCENES.md` | How to write scenes and your authored.js |
 | `intimacy.js` | Consent, the Evenings, courtship, the rite, the ladder, and the engine gates (§7.5) |
 | `WRITING-EVENTS.md` | How to write your own events |
 | `data/` | Figures and words you can edit |
