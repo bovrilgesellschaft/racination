@@ -1,0 +1,39 @@
+/*
+  RACINATION — data/glossary.js
+  ---------------------------------------------------------------
+  The house's language (GDD §11). A term is unlocked the first time
+  the player meets one of its words in the game's text, and then
+  appears on the Glossary page.
+
+  term     — the heading in the glossary
+  words    — the words that unlock it (lower case; whole words)
+  meaning  — what the glossary says
+
+  Add a term by copying one and changing its words.
+  ---------------------------------------------------------------
+*/
+
+window.RACINATION_DATA = window.RACINATION_DATA || {};
+
+window.RACINATION_DATA.glossary = [
+  { term: "The Eclipse", words: ["eclipse"],
+    meaning: "The cultural collapse of the late 1960s, after which the world fell into the Pit." },
+  { term: "The Pit", words: ["pit"],
+    meaning: "Post-Eclipse society: television, plastics, slang, ugliness, and the masculine principle in everything." },
+  { term: "Racination", words: ["racination", "racinated", "racinate", "racinating"],
+    meaning: "The undoing of the Pit's damage to the spirit; the recovery of innocence, joy and wonder." },
+  { term: "Blonde and brunette", words: ["blonde", "blondes", "brunette", "brunettes"],
+    meaning: "The two sexes of the house, neither of them male. Blondes are receptive and ultra-feminine; brunettes feminine but commanding. Assigned by temperament, not hair." },
+  { term: "Tellurian", words: ["tellurian", "tellurians"],
+    meaning: "Of the ordinary outside world. Said of people, habits and money." },
+  { term: "Bendies", words: ["bendies", "bendy"],
+    meaning: "Gramophone records." },
+  { term: "The Goddess", words: ["goddess"],
+    meaning: "The feminine deity by whom the house holds the cosmos to be ordered. Devotion to her is daily, liturgical and domestic." },
+  { term: "Matins, Evensong, Compline", words: ["matins", "evensong", "compline"],
+    meaning: "The house's hours of prayer: morning, evening and the last thing at night. The bell is rung for each." },
+  { term: "Terms", words: ["terms"],
+    meaning: "A paying guest's stay: a week of another life, at the house's rates." },
+  { term: "The Mistress", words: ["mistress"],
+    meaning: "The head of the house, a brunette by temperament, with final authority over its rules, roles and rites." }
+];

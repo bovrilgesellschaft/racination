@@ -648,6 +648,57 @@ p.news {
   .shop-buy select { max-width: 13em; }
 }
 
+/* ---------- Events (Milestone 5a) ---------- */
+
+.event-card {
+  border-bottom: 2px solid var(--magenta);
+  padding: 0.3em 0 0.7em;
+  margin-bottom: 0.6em;
+}
+.event-card:last-child { border-bottom: 0; margin-bottom: 0; }
+.event-title {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.3em;
+  color: var(--magenta);
+  margin: 0.1em 0 0.2em;
+}
+.event-from { color: var(--blue); margin: 0 0 0.4em; font-size: 0.9em; }
+.event-choices { display: flex; flex-direction: column; align-items: stretch; gap: 0.35em; margin-top: 0.5em; }
+.event-choices button { text-align: left; padding: 0.3em 0.7em; }
+.event-choices .note { margin: -0.15em 0 0.2em 0.7em; }
+.event-result {
+  border-left: 4px solid var(--magenta);
+  padding-left: 0.6em;
+}
+.event-card.answered > p:not(.event-result):not(.small) { color: #444; }
+
+.belief { margin-top: 0.6em; }
+.belief-ends { display: flex; justify-content: space-between; color: var(--blue); }
+.belief-bar {
+  position: relative;
+  height: 0.8em;
+  background: linear-gradient(90deg, var(--cyan), var(--white) 50%, var(--magenta));
+  outline: 1px solid var(--black);
+}
+.belief-bar span {
+  position: absolute;
+  top: -0.2em;
+  width: 0.5em;
+  height: 1.2em;
+  margin-left: -0.25em;
+  background: var(--black);
+}
+
+dl.glossary { margin: 0; }
+dl.glossary dt {
+  font-family: var(--display);
+  font-size: 1.2em;
+  color: var(--red);
+  margin-top: 0.5em;
+}
+dl.glossary dd { margin: 0.1em 0 0.3em 0; }
+
 /* ---------- Small screens ---------- */
 
 @media (max-width: 480px) {

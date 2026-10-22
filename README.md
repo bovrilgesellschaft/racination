@@ -3,12 +3,13 @@
 A household-management game of devotion, discipline and the Pit, 1983–1989.
 Adults only (18+).
 
-Current build: **Milestone 4, the household** (4a and 4b). Weekly accounts,
-rooms to repair and restore, the Pit, seasons and the outside world's events
-(4a); house rules, the Housekeeper, Authority as something the Mistress spends,
-a Sewing Room that makes clothes to measure and mends them, three places to buy
-clothes, and garments that wear out (4b). Milestones 1 to 3 (the turn,
-residents, the rota and the Mistress) are all still here.
+Current build: **Milestone 5a, events.** Letters arrive with the post at
+Matins and must be answered; visitors and household incidents happen midweek on
+the week's business screen. Thirty-two to start, in data files you can edit and
+add to (see `WRITING-EVENTS.md`). Choices move the Belief–Play axis, shown on
+the Mistress's page, and the house's words unlock in a Glossary. Milestones 1
+to 4 (the turn, residents, the Mistress, the economy, rules and dress) are all
+still here.
 
 ## How to play it
 
@@ -45,6 +46,9 @@ Everything in the `data` folder is for editing:
   the weekly drift of the meters, and the household's lines.
 - `data/mistress.js`: the Mistress's creation choices, backgrounds, styles,
   starting meters, weekly drift and her lines.
+- `data/letters.js` and `data/events.js`: the letters, visitors and incidents,
+  and how often they come. **`WRITING-EVENTS.md` explains how to write your own.**
+- `data/glossary.js`: the house's language and when each term unlocks.
 
 Any line of text can mention the Mistress with tokens such as
 `{mistress.name}`, `{mistress.voice}`, `{mistress.hair}`, `{mistress.scent}`,
@@ -59,7 +63,8 @@ shows an error after an edit, look for a missing comma or quotation mark.
 
 On the title screen, **Testing tools** switches on extra buttons: nudging a
 resident's or the Mistress's meters, showing a resident's secret, making a new
-household, and making the Mistress again. They are
+household, making the Mistress again, firing any event on demand, and checking
+the event files for mistakes. They are
 for checking the game and will be removed before release.
 
 ## Files
@@ -74,6 +79,8 @@ for checking the game and will be removed before release.
 | `economy.js` | The weekly accounts, rooms, guests, the Pit and the endings it can cause |
 | `rules.js` | House rules, objections, the Housekeeper, contributions |
 | `dress.js` | The Sewing Room, the shops, deliveries and wear |
+| `events.js` | Choosing, showing and resolving events; Belief–Play; the glossary |
+| `WRITING-EVENTS.md` | How to write your own events |
 | `data/` | Figures and words you can edit |
 | `fonts/` | The two fonts and their licences |
 

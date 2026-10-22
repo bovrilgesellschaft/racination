@@ -19,17 +19,18 @@
   var EC = window.RACINATION_ECONOMY;
   var RR = window.RACINATION_RULES;
   var DR = window.RACINATION_DRESS;
+  var EV = window.RACINATION_EVENTS;
 
   var SAVE_KEY = "racination.save.v1";
   var ADULT_KEY = "racination.adult";
   var TESTING_KEY = "racination.testing";
-  var SAVE_VERSION = 5;
+  var SAVE_VERSION = 6;
 
   var screenEl = document.getElementById("screen");
   var borderEl = document.getElementById("border");
   var fileInput = document.getElementById("import-file");
 
-  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
+  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !EV || !DATA.events || !DATA.letters || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
     screenEl.innerHTML = '<p class="warn">One of the game’s files is missing or has a mistake in it, '
       + "so the game cannot start. If you have just edited a file in the data folder, check it for a missing "
       + "comma or quotation mark.</p>";
@@ -216,6 +217,7 @@
     EC.initHouse(state);
     RR.ensureRules(state);
     DR.ensureDress(state);
+    EV.ensureEvents(state);
     return state;
   }
 
@@ -253,6 +255,8 @@
     }
     RR.ensureRules(s);
     DR.ensureDress(s);
+    EV.ensureEvents(s);
+    if (s.version < 6) s.version = 6;
     if (!Array.isArray(s.residents)) s.residents = [];
     if (!Array.isArray(s.departed)) s.departed = [];
     if (typeof s.nextId !== "number") s.nextId = s.residents.length + 1;
@@ -301,6 +305,7 @@
       var monday = mondayOf(state.week);
       EC.startWeek(state, monday, seasonOf(monday), rand);
       DR.shopsWeek(state, rand).forEach(function (n) { state.house.news.push(n); });
+      EV.startWeek(state, monday, seasonOf(monday), rand);
     }
     if (state.matinsLine) return;
     if (state.week === 0 && HOUSE.openingLine) {
@@ -359,6 +364,8 @@
     EC.residentEffects(state);
     RR.weekly(state, season).forEach(function (e) { events.push(e); });
     DR.wearWeek(state, season).forEach(function (e) { events.push(e); });
+    EV.weekly(state);
+    EV.takeNotes(state).forEach(function (n) { events.unshift(n.result); });
 
     var people = state.residents.map(function (r) {
       return {
@@ -514,8 +521,11 @@
   }
 
   // Fill the Mistress's tokens, {mistress.name} and the rest, in any text.
+  // Anything shown through T also unlocks glossary terms the first time they are met.
   function T(text) {
-    return state && state.mistress ? MI.fillTokens(text, state.mistress) : text;
+    var out = state && state.mistress ? MI.fillTokens(text, state.mistress) : text;
+    if (state && state.events) EV.hear(state, out);
+    return out;
   }
 
   function setFlash(msg, bad) {
@@ -555,6 +565,7 @@
       + (state.house ? '<button data-act="rules">Rules</button>' : "")
       + (state.house ? '<button data-act="wardrobe">Wardrobe</button>' : "")
       + '<button data-act="ledger">Ledger</button>'
+      + (state.events ? '<button data-act="glossary">Glossary (' + state.events.glossary.length + ")</button>" : "")
       + '<button data-act="export">Save file</button>'
       + '<button data-act="import">Load file</button>'
       + '<button data-act="title">Title</button>'
@@ -713,7 +724,10 @@
       + "</div>"
       + '<h2 class="band blue">' + esc(reportTitle()) + "</h2>"
       + '<div class="pane">' + report + moods + housekeeperNotes() + "</div>"
-      + '<div class="actions"><button class="primary" data-act="to-rota" data-primary>To the rota board</button>'
+      + postSection()
+      + (EV.unanswered(state, "letter").length
+        ? '<div class="actions"><button class="primary" disabled>Answer the post first</button>'
+        : '<div class="actions"><button class="primary" data-act="to-rota" data-primary>To the rota board</button>')
       + '<button data-act="household">See the household</button></div>'
       + "</div>";
   }
@@ -756,7 +770,8 @@
       + (summary ? '<p class="small note">' + summary + "</p>" : "")
       + "</div>"
       + '<details class="pane notes"><summary>About the duties</summary><ul>' + notes + "</ul></details>"
-      + '<div class="actions"><button class="primary" data-act="to-reckoning" data-primary>On to Sunday</button></div>'
+      + '<div class="actions"><button class="primary" data-act="from-rota" data-primary>'
+      + (EV.pendingFor(state, "business").length ? "On to the week’s business" : "On to Sunday") + "</button></div>"
       + "</div>";
   }
 
@@ -1064,6 +1079,78 @@
       + "</div>";
   }
 
+  /* ---------- Events: the post, the week's business, the glossary (Milestone 5a) ---------- */
+
+  function eventCard(p) {
+    var e = EV.byId(p.id);
+    if (!e) return "";
+    var text = EV.fillText(state, e.text, p);
+    EV.hear(state, text);
+    var title = EV.fillText(state, e.title, p);
+    var from = e.from ? EV.fillText(state, e.from, p) : "";
+    var body;
+    if (p.chosen != null) {
+      EV.hear(state, p.result);
+      body = '<p class="small note">You chose: ' + esc(EV.fillText(state, e.choices[p.chosen].label, p)) + "</p>"
+        + '<p class="event-result">' + esc(p.result) + "</p>";
+    } else {
+      body = '<div class="event-choices">' + e.choices.map(function (c, i) {
+        var why = EV.needsMet(state, p, c);
+        return '<button data-act="choose-event" data-key="' + p.key + '" data-index="' + i + '"' + (why ? " disabled" : "") + ">"
+          + esc(EV.fillText(state, c.label, p)) + "</button>" + (why ? '<span class="small note">' + esc(why) + "</span>" : "");
+      }).join("") + "</div>";
+    }
+    return '<div class="event-card' + (p.chosen != null ? " answered" : "") + '">'
+      + '<h3 class="event-title">' + esc(title) + "</h3>"
+      + (from ? '<p class="event-from">From ' + esc(from) + "</p>" : "")
+      + "<p>" + esc(text) + "</p>" + body + "</div>";
+  }
+
+  function postSection() {
+    var letters = EV.pendingFor(state, "letter");
+    if (!letters.length) return "";
+    return '<h2 class="band magenta">The post</h2>'
+      + '<div class="pane">' + letters.map(eventCard).join("") + "</div>";
+  }
+
+  function viewBusiness() {
+    var items = EV.pendingFor(state, "business").concat(EV.unanswered(state, "letter"));
+    var waiting = items.filter(function (p) { return p.chosen == null; }).length;
+    return statusBar() + takeFlash()
+      + '<div class="body">'
+      + '<h2 class="band magenta">The week’s business</h2>'
+      + '<p class="dateline">Week of ' + esc(longDate(mondayOf(state.week))) + "</p>"
+      + '<div class="pane">' + (items.map(eventCard).join("") || "<p>A quiet week.</p>") + "</div>"
+      + '<div class="actions">' + (waiting
+        ? '<button class="primary" disabled>Settle the week’s business first</button>'
+        : '<button class="primary" data-act="to-reckoning" data-primary>On to Sunday</button>') + "</div>"
+      + "</div>";
+  }
+
+  function beliefScale() {
+    var b = Math.round(state.events.belief);
+    var pos = (b + 100) / 2;
+    return '<div class="belief"><div class="belief-ends small"><span>Play</span><span>Belief</span></div>'
+      + '<div class="belief-bar" aria-hidden="true"><span style="left:' + pos + '%"></span></div>'
+      + '<p class="small note">The house: ' + esc(EV.beliefWord(b)) + " (" + (b > 0 ? "+" : "") + b + "). "
+      + "Belief lifts Devotion each week; Play eases Doubt.</p></div>";
+  }
+
+  function viewGlossary() {
+    var terms = EV.glossary(state);
+    var rows = terms.map(function (g) {
+      return "<dt>" + esc(g.term) + "</dt><dd>" + esc(g.meaning) + "</dd>";
+    }).join("");
+    var total = (DATA.glossary || []).length;
+    return statusBar() + takeFlash()
+      + '<div class="body">'
+      + '<h2 class="band blue">Glossary</h2>'
+      + '<p class="dateline">The house’s language: ' + terms.length + " of " + total + " terms heard so far</p>"
+      + '<div class="pane">' + (rows ? '<dl class="glossary">' + rows + "</dl>" : "<p>No terms yet. They are added as you meet them.</p>") + "</div>"
+      + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div>'
+      + "</div>";
+  }
+
   /* ---------- The house: rooms ---------- */
 
   function viewHouse() {
@@ -1135,7 +1222,12 @@
       + '<div class="pane">' + (cards || "<p>The house is empty.</p>") + "</div>"
       + (gone ? '<h2 class="band black">Departed</h2><div class="pane"><ul class="plain">' + gone + "</ul></div>" : "")
       + (testing ? '<div class="testing"><p class="small">Testing tools</p>'
-        + '<button data-act="regen">Make a new household</button></div>' : "")
+        + '<button data-act="regen">Make a new household</button>'
+        + '<label class="field" style="width:100%"><span>Fire an event now</span><select id="fire-choice">'
+        + EV.all().map(function (e) { return '<option value="' + esc(e.id) + '">' + esc((e.kind === "letter" ? "Letter: " : (e.kind === "visitor" ? "Visitor: " : "Incident: ")) + e.title) + "</option>"; }).join("")
+        + "</select></label>"
+        + '<button data-act="fire-event">Fire it</button>'
+        + '<button data-act="check-events">Check the event files</button></div>' : "")
       + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div>'
       + "</div>";
   }
@@ -1437,6 +1529,7 @@
       + '<ul class="plain small note"><li>Authority: ' + esc(notes.authority) + "</li><li>Conviction: " + esc(notes.conviction)
       + "</li><li>Doubt: " + esc(notes.doubt) + "</li></ul>"
       + (MI.inCrisis(m) ? '<p class="warn">Her Doubt has outrun her Conviction for a season.</p>' : "")
+      + beliefScale()
       + "</div>"
       + '<h2 class="band blue">Her history</h2>'
       + '<div class="pane"><p>' + esc(bg.blurb) + "</p>"
@@ -1515,6 +1608,7 @@
       case "ledger": html = viewLedger(); break;
       case "household": html = viewHousehold(); break;
       case "house": html = viewHouse(); break;
+      case "glossary": html = viewGlossary(); break;
       case "rules": html = viewRules(); break;
       case "wardrobe": html = viewWardrobe(); break;
       case "resident": html = viewResident(); break;
@@ -1523,6 +1617,7 @@
         if (!state.mistress) html = viewCreate();
         else if (state.ended || state.phase === "end") html = viewEnd();
         else if (state.phase === "rota") html = viewRota();
+        else if (state.phase === "business") html = viewBusiness();
         else if (state.phase === "reckoning" && entryFor(state.week)) html = viewReckoning();
         else { state.phase = "matins"; html = viewMatins(); }
         break;
@@ -1656,6 +1751,29 @@
         ledgerYear = Number(el.getAttribute("data-year")); render(); break;
       case "to-rota": goToRota(); window.scrollTo(0, 0); break;
       case "to-reckoning": goToReckoning(); window.scrollTo(0, 0); break;
+      case "from-rota":
+        if (EV.pendingFor(state, "business").length) { state.phase = "business"; saveGame(); goView("game"); }
+        else { goToReckoning(); window.scrollTo(0, 0); }
+        break;
+      case "choose-event":
+        var ce = EV.choose(state, Number(el.getAttribute("data-key")), Number(el.getAttribute("data-index")), rand);
+        if (!ce.ok) setFlash(ce.why, true);
+        saveGame();
+        rerenderKeepingPlace(); break;
+      case "glossary": goView("glossary"); break;
+      case "fire-event":
+        var fsel = document.getElementById("fire-choice");
+        if (fsel) {
+          var fmon = mondayOf(Math.min(state.week, TOTAL_WEEKS - 1));
+          var fwhy = EV.fire(state, fsel.value, fmon, seasonOf(fmon), rand);
+          setFlash(fwhy || "Fired. Letters appear at Matins; visitors and incidents in the week’s business.", !!fwhy);
+          saveGame();
+        }
+        rerenderKeepingPlace(); break;
+      case "check-events":
+        var probs = EV.check();
+        setFlash(probs.length ? "Problems in the event files: " + probs.join(" | ") : "The event files are in order: " + EV.all().length + " events, no problems found.", !!probs.length);
+        rerenderKeepingPlace(); break;
       case "next-week": nextWeek(); break;
       case "copy-portrait": copyPortrait(); break;
       case "nudge":
