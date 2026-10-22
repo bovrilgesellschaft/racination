@@ -17,6 +17,13 @@
   var h = H.helpers;
 
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  // What the house rules and the Housekeeper do to the accounts (Milestone 4b).
+  function ruleCosts(state) {
+    var RR = window.RACINATION_RULES;
+    if (RR && state.rules) return RR.costs(state);
+    return { electricity: E.electricity, paraffin: 0, electricityPit: 0, remittances: 1, tiePit: 1, housekeeperSaving: 0 };
+  }
   function r2(x) { return Math.round(x * 100) / 100; }
   function pence(pounds) { return Math.round(Number(pounds || 0) * 100); }
 
@@ -168,6 +175,7 @@
 
   function weekAccounts(state, season) {
     var hs = state.house;
+    var rc = ruleCosts(state);
     var lines = [];
     function income(label, pounds) { var p = pence(pounds); if (p) lines.push({ label: label, amount: p }); }
     function expense(label, pounds) { var p = pence(pounds); if (p) lines.push({ label: label, amount: -p }); }
@@ -188,12 +196,14 @@
     var sew = 0;
     onDuty(state, "sewing").forEach(function (r) { sew += E.needlework.base + E.needlework.perNeedlework * (r.skills.needlework || 0); });
     sew *= roomFactor(state, "sewing");
+    // Sewing time spent on the house's own clothes is not sold.
+    if (state.sewing && typeof state.sewing.saleShare === "number") sew *= state.sewing.saleShare;
     income("Needlework and dressmaking", sew);
 
     // Remittances
     var fam = 0;
     state.residents.forEach(function (r) { r.ties.forEach(function (t) { if (t.kind === "family") fam++; }); });
-    income("Residents' contributions and remittances", state.residents.length * (E.remittances.perResident || 0) + fam * E.remittances.perFamilyTie);
+    income("Residents' contributions and remittances", state.residents.length * (E.remittances.perResident || 0) + fam * E.remittances.perFamilyTie * rc.remittances);
 
     // Rent or rates
     if (owned(state)) expense("Rates", E.ownerRates);
@@ -208,10 +218,11 @@
     var bestCook = 0;
     onDuty(state, "kitchen").forEach(function (r) { bestCook = Math.max(bestCook, r.skills.cookery || 0); });
     prov = prov * (1 - Math.min(0.25, bestCook * E.kitchenSavingPerCookery)) - garden;
-    expense("Provisions", Math.max(prov, mouths * E.provisionsPerMouth * 0.4));
+    prov = Math.max(prov, mouths * E.provisionsPerMouth * 0.4) * (1 - rc.housekeeperSaving);
+    expense("Provisions", prov);
 
-    expense("Coal and paraffin", E.heating[season] || 0);
-    expense("Electricity", E.electricity);
+    expense("Coal and paraffin", ((E.heating[season] || 0) + rc.paraffin) * (1 - rc.housekeeperSaving));
+    expense("Electricity", rc.electricity);
     expense("Postage", E.postageBase + E.postagePerCorrespondent * corr.length);
     expense("Printing", pub * E.publications.printingShare);
 
@@ -242,12 +253,14 @@
 
     // The Pit.
     var P = E.pit;
+    var rc = ruleCosts(state);
     var ties = 0;
     state.residents.forEach(function (r) { r.ties.forEach(function (t) { if (t.kind === "family") ties++; }); });
     var add = P.deliveries + P.villageShop
       + hs.guests * E.guests.pitEach
       + onDuty(state, "correspondence").length * E.publications.pitEach
-      + ties * E.remittances.pitEach
+      + ties * E.remittances.pitEach * rc.tiePit
+      + rc.electricityPit
       + onDuty(state, "computing").length * P.perComputing
       + shabbyRooms(state) * P.perShabbyRoom
       + (state.money < 0 ? P.debt : (state.money < pence(E.worryBelow) ? P.moneyWorry : 0));

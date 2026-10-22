@@ -579,7 +579,10 @@
      The week
      ============================================================ */
 
-  function weekly(r, season) {
+  function weekly(r, season, opts) {
+    opts = opts || {};
+    var periodMult = opts.periodMult != null ? opts.periodMult : 1;
+    var pitMult = opts.pitMult != null ? opts.pitMult : 1;
     var d = R.drift;
     var du = duty(r.duty);
     var des = desire(r.desire);
@@ -588,8 +591,8 @@
     var m = r.meters;
     var before = { racination: m.racination, devotion: m.devotion, doubt: m.doubt };
 
-    var dRac = share * d.dressPeriod + (1 - share) * d.dressPit;
-    var dDev = (share - 0.5) * 2 * d.dressDevotion;
+    var dRac = share * d.dressPeriod * periodMult + (1 - share) * d.dressPit * pitMult;
+    var dDev = (share - 0.5) * 2 * d.dressDevotion * (share >= 0.5 ? periodMult : pitMult);
     var dDbt = 0;
 
     dRac += du.racination || 0;

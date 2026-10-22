@@ -603,6 +603,51 @@ p.news {
 
 .pit-status { color: var(--bwhite); }
 
+/* ---------- Rules and wardrobe (Milestone 4b) ---------- */
+
+.rule-option {
+  display: grid;
+  grid-template-columns: 9.5em 1fr;
+  gap: 0.6em;
+  align-items: start;
+  padding: 0.3em 0;
+  border-bottom: 1px dotted var(--cyan);
+}
+.rule-option:last-child { border-bottom: 0; }
+.rule-option button { font-size: 0.9em; text-align: left; }
+.rule-option.current button:disabled {
+  background: var(--red);
+  color: var(--bwhite);
+  outline: 0;
+}
+
+.tag.hk { background: var(--blue); color: var(--byellow); }
+
+.shop-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em 0.8em;
+  padding: 0.35em 0;
+  border-bottom: 1px dotted var(--cyan);
+}
+.shop-buy { display: flex; flex-wrap: wrap; gap: 0.3em; align-items: center; }
+.shop-buy select {
+  font-family: var(--text);
+  font-size: 0.9em;
+  background: var(--black);
+  color: var(--bwhite);
+  border: 0;
+  border-radius: 0;
+  padding: 0.05em 0.3em;
+  max-width: 100%;
+}
+.shop-buy button { font-size: 0.9em; padding: 0.05em 0.6em; }
+
+@media (max-width: 480px) {
+  .rule-option { grid-template-columns: 1fr; gap: 0.15em; }
+  .shop-buy select { max-width: 13em; }
+}
+
 /* ---------- Small screens ---------- */
 
 @media (max-width: 480px) {

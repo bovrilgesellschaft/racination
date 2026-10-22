@@ -17,17 +17,19 @@
   var H = window.RACINATION_HOUSEHOLD;
   var MI = window.RACINATION_MISTRESS;
   var EC = window.RACINATION_ECONOMY;
+  var RR = window.RACINATION_RULES;
+  var DR = window.RACINATION_DRESS;
 
   var SAVE_KEY = "racination.save.v1";
   var ADULT_KEY = "racination.adult";
   var TESTING_KEY = "racination.testing";
-  var SAVE_VERSION = 4;
+  var SAVE_VERSION = 5;
 
   var screenEl = document.getElementById("screen");
   var borderEl = document.getElementById("border");
   var fileInput = document.getElementById("import-file");
 
-  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
+  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
     screenEl.innerHTML = '<p class="warn">One of the game’s files is missing or has a mistake in it, '
       + "so the game cannot start. If you have just edited a file in the data folder, check it for a missing "
       + "comma or quotation mark.</p>";
@@ -212,6 +214,8 @@
     draft = null;
     addHousehold();
     EC.initHouse(state);
+    RR.ensureRules(state);
+    DR.ensureDress(state);
     return state;
   }
 
@@ -242,6 +246,13 @@
       s.version = 4;
     }
     if (!s.rules) s.rules = {};
+    if (s.version < 5) {
+      // Milestone 4b: house rules, the Housekeeper, the Sewing Room and the shops.
+      if (s.mistress && !s.rules.dressCode) s.rules.dressCode = s.mistress.dressCode;
+      s.version = 5;
+    }
+    RR.ensureRules(s);
+    DR.ensureDress(s);
     if (!Array.isArray(s.residents)) s.residents = [];
     if (!Array.isArray(s.departed)) s.departed = [];
     if (typeof s.nextId !== "number") s.nextId = s.residents.length + 1;
@@ -289,6 +300,7 @@
     if (state.house && state.mistress) {
       var monday = mondayOf(state.week);
       EC.startWeek(state, monday, seasonOf(monday), rand);
+      DR.shopsWeek(state, rand).forEach(function (n) { state.house.news.push(n); });
     }
     if (state.matinsLine) return;
     if (state.week === 0 && HOUSE.openingLine) {
@@ -314,7 +326,10 @@
     var season = seasonOf(mondayOf(state.week));
     if (state.house.weekOf !== state.week) EC.startWeek(state, mondayOf(state.week), season, rand);
 
-    // The week's accounts. Repairs and restorations were paid when ordered.
+    // The Sewing Room's week comes first: what it does not spend on the house's clothes, it sells.
+    var sewingEvents = DR.sewingWeek(state);
+
+    // The week's accounts. Repairs, restorations, cloth and purchases were paid when ordered.
     var lines = EC.weekAccounts(state, season);
     var net = 0;
     lines.forEach(function (l) { net += l.amount; });
@@ -325,9 +340,10 @@
     lines.forEach(function (l) { if (l.amount > 0) received += l.amount; else paid -= l.amount; });
 
     // The household's week.
-    var events = [], departures = [];
+    var events = sewingEvents.slice(), departures = [];
+    var dressRule = RR.dressMultipliers(state);
     state.residents.forEach(function (r) {
-      var res = H.weekly(r, season);
+      var res = H.weekly(r, season, dressRule);
       res.events.forEach(function (e) { events.push(e); });
       if (res.departs) departures.push(r);
     });
@@ -341,6 +357,8 @@
     // The house's week: rooms, the Pit, guests' opinion, debt; and how the house touches each woman.
     EC.houseWeek(state, season).forEach(function (e) { events.push(e); });
     EC.residentEffects(state);
+    RR.weekly(state, season).forEach(function (e) { events.push(e); });
+    DR.wearWeek(state, season).forEach(function (e) { events.push(e); });
 
     var people = state.residents.map(function (r) {
       return {
@@ -534,6 +552,8 @@
       + (state.mistress ? '<button data-act="mistress">Mistress</button>' : "")
       + '<button data-act="household">Household</button>'
       + (state.house ? '<button data-act="house">House</button>' : "")
+      + (state.house ? '<button data-act="rules">Rules</button>' : "")
+      + (state.house ? '<button data-act="wardrobe">Wardrobe</button>' : "")
       + '<button data-act="ledger">Ledger</button>'
       + '<button data-act="export">Save file</button>'
       + '<button data-act="import">Load file</button>'
@@ -691,8 +711,8 @@
         ? state.house.news.map(function (n) { return '<p class="news">' + esc(T(n)) + "</p>"; }).join("") : "")
       + (MI.inCrisis(state.mistress) ? '<p class="note">' + esc(T(H.helpers.fixedPick(MI.data.crisisLines, "c" + state.week))) + "</p>" : "")
       + "</div>"
-      + '<h2 class="band blue">The Housekeeper’s report</h2>'
-      + '<div class="pane">' + report + moods + "</div>"
+      + '<h2 class="band blue">' + esc(reportTitle()) + "</h2>"
+      + '<div class="pane">' + report + moods + housekeeperNotes() + "</div>"
       + '<div class="actions"><button class="primary" data-act="to-rota" data-primary>To the rota board</button>'
       + '<button data-act="household">See the household</button></div>'
       + "</div>";
@@ -855,6 +875,195 @@
     return html;
   }
 
+  /* ---------- House rules, the Housekeeper, contributions (Milestone 4b) ---------- */
+
+  function reportTitle() {
+    var hk = RR.housekeeper(state);
+    return hk ? RR.data.housekeeper.reportTitle.replace("{name}", H.displayName(hk)) : "The Housekeeper’s report";
+  }
+
+  function housekeeperNotes() {
+    var hk = RR.housekeeper(state);
+    if (!hk) return '<p class="note small">' + esc(RR.data.housekeeper.vacancy) + "</p>";
+    var w = RR.housekeeperWarning(state);
+    return w ? '<p class="warn">' + esc(w) + "</p>" : "";
+  }
+
+  function viewRules() {
+    var m = state.mistress;
+    var sections = RR.data.rules.map(function (rule) {
+      var cur = RR.current(state, rule.id);
+      var opts = rule.options.map(function (o) {
+        var isCur = o.id === cur.id;
+        var p = RR.previewChange(state, rule.id, o.id);
+        var why = RR.canChange(state, rule.id, o.id);
+        var detail = isCur ? "In force"
+          : "Costs " + p.cost + " Authority"
+            + (p.objectors.length ? " · " + p.objectors.length + (p.objectors.length === 1 ? " would object" : " would object") : "")
+            + (p.supporters.length ? " · " + p.supporters.length + " would welcome it" : "");
+        return '<div class="rule-option' + (isCur ? " current" : "") + '">'
+          + '<button data-act="set-rule" data-rule="' + rule.id + '" data-option="' + o.id + '"'
+          + (isCur || why ? " disabled" : "") + (why && !isCur ? ' title="' + esc(why) + '"' : "") + ">" + esc(o.label) + "</button>"
+          + '<span class="small">' + esc(o.note) + ' <span class="note">' + esc(detail) + "</span></span></div>";
+      }).join("");
+      return '<fieldset class="create-section"><legend>' + esc(rule.name) + "</legend>"
+        + '<p class="small note">' + esc(rule.about) + "</p>" + opts + "</fieldset>";
+    }).join("");
+
+    var hk = RR.housekeeper(state);
+    var brunettes = state.residents.filter(function (r) { return r.polarity === "brunette"; });
+    var hkSection = '<fieldset class="create-section"><legend>The Housekeeper</legend>'
+      + (hk ? "<p>" + residentLink(hk) + " keeps the house. Accounts " + (hk.skills.accounts || 0)
+        + ", trimming the provisions and coal by " + Math.round(Math.min(RR.data.housekeeper.maxSaving, (hk.skills.accounts || 0) * RR.data.housekeeper.savingPerAccounts) * 100)
+        + "%. Her loyalty (Devotion less Doubt): <strong>" + RR.loyalty(hk) + "</strong>.</p>"
+        : "<p>The house has no Housekeeper. Appointing one costs " + RR.data.housekeeper.appointCost + " Authority.</p>")
+      + (brunettes.length
+        ? '<label class="field"><span>Appoint a brunette</span><select id="hk-choice">'
+          + brunettes.map(function (r) {
+            return '<option value="' + r.id + '"' + (hk && hk.id === r.id ? " selected" : "") + ">" + esc(H.displayName(r))
+              + " (Accounts " + (r.skills.accounts || 0) + ", loyalty " + RR.loyalty(r) + ")</option>";
+          }).join("") + "</select></label>"
+          + '<div class="actions"><button data-act="appoint">Appoint, ' + RR.data.housekeeper.appointCost + " Authority</button></div>"
+        : "<p>There is no brunette in the house to appoint.</p>")
+      + "</fieldset>";
+
+    var C = RR.data.contributions;
+    var ready = RR.contributionsReady(state);
+    var contrib = '<fieldset class="create-section"><legend>Contributions</legend>'
+      + "<p class=\"small\">Ask the household for " + money(pence(C.perResident)) + " each from their savings: "
+      + money(pence(C.perResident * state.residents.length)) + " in all. It costs " + C.authorityCost
+      + " Authority and every resident’s goodwill; those with debts resent it most.</p>"
+      + '<div class="actions"><button data-act="contributions"' + (ready ? " disabled" : "") + ">Ask for contributions</button></div>"
+      + (ready ? '<p class="small note">' + esc(ready) + "</p>" : "")
+      + "</fieldset>";
+
+    return statusBar() + takeFlash()
+      + '<div class="body">'
+      + '<h2 class="band magenta">The House Rules</h2>'
+      + '<p class="dateline">' + esc(MI.displayName(m)) + " has " + Math.floor(m.meters.authority) + " Authority to spend</p>"
+      + '<div class="pane create">' + sections + hkSection + contrib + "</div>"
+      + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div>'
+      + "</div>";
+  }
+
+  /* ---------- The Wardrobe: Sewing Room and shops (Milestone 4b) ---------- */
+
+  var orderDraft = null;
+
+  function ownersList() {
+    var list = [{ id: 0, name: MI.displayName(state.mistress) + " (the Mistress)" }];
+    state.residents.forEach(function (r) { list.push({ id: r.id, name: H.displayName(r) }); });
+    return list;
+  }
+
+  function forSelect(cls, selectedId, mistressOnly) {
+    var list = ownersList().filter(function (o) { return !mistressOnly || o.id === 0; });
+    return '<select class="' + cls + '" aria-label="For whom">' + list.map(function (o) {
+      return '<option value="' + o.id + '"' + (o.id === selectedId ? " selected" : "") + ">" + esc(o.name) + "</option>";
+    }).join("") + "</select>";
+  }
+
+  function orderDraftNow() {
+    var defs;
+    if (!orderDraft) orderDraft = { owner: state.residents.length ? state.residents[0].id : 0 };
+    if (orderDraft.owner !== 0 && !resident(orderDraft.owner)) orderDraft.owner = 0;
+    defs = DR.makeable(orderDraft.owner === 0);
+    if (!defs.some(function (d) { return d.id === orderDraft.g; })) orderDraft.g = defs[0].id;
+    var def = H.helpers.garmentDef(orderDraft.g);
+    var cols = DR.colourChoices(def);
+    if (cols.indexOf(orderDraft.colour) < 0) orderDraft.colour = cols[0];
+    if ((def.fabrics || []).indexOf(orderDraft.fabric) < 0) orderDraft.fabric = (def.fabrics || [""])[0];
+    return orderDraft;
+  }
+
+  function garmentLabel(def) {
+    return def.name || capital(def.id.replace(/-/g, " "));
+  }
+
+  function shopItem(shop, it) {
+    var def = H.helpers.garmentDef(it.garment.g);
+    var mistressOnly = def && def.mistress;
+    return '<div class="shop-item">'
+      + "<div>" + esc(capital(H.garmentName(it.garment))) + ' <span class="tag period">' + it.garment.year + "</span> "
+      + '<span class="small note">kept ' + Math.round(it.garment.condition) + "%" + (mistressOnly ? ", for the Mistress only" : "") + "</span></div>"
+      + '<div class="shop-buy">' + forSelect("for", mistressOnly ? 0 : (state.residents[0] ? state.residents[0].id : 0), mistressOnly)
+      + '<button data-act="buy" data-shop="' + shop + '" data-key="' + it.key + '">Buy, ' + money(pence(it.price)) + "</button></div>"
+      + "</div>";
+  }
+
+  function viewWardrobe() {
+    var od = orderDraftNow();
+    var def = H.helpers.garmentDef(od.g);
+    var cap = DR.capacity(state);
+    var seamstresses = state.residents.filter(function (r) { return r.duty === "sewing"; });
+    var SH = DR.data.shops;
+
+    var orders = state.sewing.orders.map(function (o) {
+      var d = H.helpers.garmentDef(o.g);
+      var left = DR.weeksLeft(state, o);
+      return '<tr><td>' + esc(capital(o.colour + " " + o.fabric + " " + (d ? (d.name || d.id).toLowerCase() : o.g))) + " for " + esc(DR.ownerName(state, o.owner)) + "</td>"
+        + '<td class="num">' + Math.round(o.done / o.work * 100) + "%</td>"
+        + '<td class="num">' + (left == null ? "waiting" : left + (left === 1 ? " week" : " weeks")) + "</td>"
+        + '<td><button class="tiny" data-act="cancel-order" data-order="' + o.id + '">Cancel</button></td></tr>';
+    }).join("");
+
+    var sewing = '<fieldset class="create-section"><legend>The Sewing Room</legend>'
+      + "<p class=\"small\">" + (seamstresses.length
+        ? seamstresses.map(function (r) { return esc(H.displayName(r)) + " (Needlework " + (r.skills.needlework || 0) + ")"; }).join(", ")
+          + (seamstresses.length === 1 ? " works" : " work") + " here, giving " + Math.round(cap * 10) / 10 + " units of work a week."
+        : "No one is on the Sewing Room rota, so nothing can be made or mended. Put a resident there on the rota board.") + "</p>"
+      + '<p class="small"><button class="tiny" data-act="mend-toggle">Mend first: ' + (state.sewing.mendFirst ? "on" : "off") + "</button> "
+      + '<span class="note">When on, the most worn garments in the house are mended before new work.</span></p>'
+      + '<div class="grid">'
+      + '<label class="field"><span>For</span>' + forSelect("order-field\" data-order-field=\"owner", od.owner, false) + "</label>"
+      + '<label class="field"><span>Garment</span><select data-order-field="g">' + DR.makeable(od.owner === 0).map(function (d) {
+        return '<option value="' + d.id + '"' + (d.id === od.g ? " selected" : "") + ">" + esc(garmentLabel(d)) + "</option>";
+      }).join("") + "</select></label>"
+      + '<label class="field"><span>Colour</span><select data-order-field="colour">' + DR.colourChoices(def).map(function (c) {
+        return '<option value="' + esc(c) + '"' + (c === od.colour ? " selected" : "") + ">" + esc(capital(c)) + "</option>";
+      }).join("") + "</select></label>"
+      + '<label class="field"><span>Fabric</span><select data-order-field="fabric">' + (def.fabrics || [""]).map(function (f) {
+        return '<option value="' + esc(f) + '"' + (f === od.fabric ? " selected" : "") + ">" + esc(capital(f)) + "</option>";
+      }).join("") + "</select></label>"
+      + "</div>"
+      + '<div class="actions"><button data-act="place-order">Order it: cloth ' + money(pence(DR.clothCost(def, od.fabric))) + ", "
+      + DR.data.making.work[def.slot] + " units of work</button></div>"
+      + (orders ? '<div class="book inline-book"><table><thead><tr><th>On the cutting table</th><th class="num">Done</th><th class="num">Ready in</th><th></th></tr></thead><tbody>'
+        + orders + "</tbody></table></div>" : '<p class="small note">No orders on the cutting table.</p>')
+      + "</fieldset>";
+
+    var jumble = state.shops.jumble.map(function (it) { return shopItem("jumble", it); }).join("") || '<p class="small note">Nothing left this week.</p>';
+    var dealer = state.shops.dealer.map(function (it) { return shopItem("dealer", it); }).join("") || '<p class="small note">Nothing left this week.</p>';
+    var mail = SH.mail.catalogue.map(function (entry, i) {
+      var d = H.helpers.garmentDef(entry.g);
+      if (!d) return "";
+      return '<div class="shop-item"><div>' + esc(garmentLabel(d)) + "</div>"
+        + '<div class="shop-buy">' + forSelect("for", state.residents[0] ? state.residents[0].id : 0, false)
+        + '<select class="colour" aria-label="Colour">' + DR.colourChoices(d).map(function (c) { return '<option value="' + esc(c) + '">' + esc(capital(c)) + "</option>"; }).join("") + "</select>"
+        + '<button data-act="mail" data-index="' + i + '">Order, ' + money(pence(entry.price)) + "</button></div></div>";
+    }).join("");
+    var parcels = state.shops.deliveries.map(function (dl) {
+      return "<li>" + esc(capital(H.garmentName(dl.garment))) + " for " + esc(DR.ownerName(state, dl.owner)) + ", due " + esc(shortDate(mondayOf(Math.min(dl.arrives, TOTAL_WEEKS - 1)))) + "</li>";
+    }).join("");
+
+    var shops = '<fieldset class="create-section"><legend>' + esc(SH.jumble.name) + "</legend>"
+      + '<p class="small note">' + esc(SH.jumble.about) + "</p>" + jumble + "</fieldset>"
+      + '<fieldset class="create-section"><legend>' + esc(SH.mail.name) + "</legend>"
+      + '<p class="small note">' + esc(SH.mail.about) + "</p>" + mail
+      + (parcels ? '<p class="small"><strong>Parcels on the way:</strong></p><ul class="plain small">' + parcels + "</ul>" : "")
+      + "</fieldset>"
+      + '<fieldset class="create-section"><legend>' + esc(SH.dealer.name) + "</legend>"
+      + '<p class="small note">' + esc(SH.dealer.about) + "</p>" + dealer + "</fieldset>";
+
+    return statusBar() + takeFlash()
+      + '<div class="body">'
+      + '<h2 class="band magenta">The Wardrobe</h2>'
+      + '<p class="dateline">The dress code is ' + esc(RR.current(state, "dressCode").label.toLowerCase()) + "</p>"
+      + '<div class="pane create">' + sewing + shops + "</div>"
+      + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div>'
+      + "</div>";
+  }
+
   /* ---------- The house: rooms ---------- */
 
   function viewHouse() {
@@ -910,7 +1119,7 @@
     var cards = state.residents.map(function (r) {
       var du = H.duty(r.duty);
       return '<div class="card">'
-        + '<div class="card-head">' + residentLink(r) + " " + polarityTag(r) + "</div>"
+        + '<div class="card-head">' + residentLink(r) + " " + polarityTag(r) + (state.housekeeper === r.id ? ' <span class="tag hk">Housekeeper</span>' : "") + "</div>"
         + '<p class="small">' + esc(r.first) + ", aged " + r.age + " · " + esc(H.background(r.background).name)
         + " · " + esc(du.name) + "</p>"
         + meters(r, state.week > 0)
@@ -957,7 +1166,7 @@
       var on = wornIds.indexOf(g) >= 0;
       return "<tr" + (on ? ' class="current"' : "") + "><td>" + esc(capital(H.garmentName(g))) + "</td>"
         + '<td><span class="tag ' + (g.era === "period" ? "period" : "pit") + '">' + (g.era === "period" ? g.year : "Pit") + "</span></td>"
-        + '<td class="num">' + g.condition + "%</td></tr>";
+        + '<td class="num">' + Math.round(g.condition) + "%</td></tr>";
     }).join("");
 
     var testingTools = testing
@@ -1197,7 +1406,7 @@
     var wardrobe = m.wardrobe.map(function (g) {
       var on = worn.indexOf(g) >= 0;
       return "<tr" + (on ? ' class="current"' : "") + "><td>" + esc(capital(H.garmentName(g))) + "</td>"
-        + '<td><span class="tag period">' + g.year + '</span></td><td class="num">' + g.condition + "%</td></tr>";
+        + '<td><span class="tag period">' + g.year + '</span></td><td class="num">' + Math.round(g.condition) + "%</td></tr>";
     }).join("");
 
     var gossip = m.gossip >= 66 ? "a great deal" : m.gossip >= 33 ? "a fair amount" : "very little";
@@ -1306,6 +1515,8 @@
       case "ledger": html = viewLedger(); break;
       case "household": html = viewHousehold(); break;
       case "house": html = viewHouse(); break;
+      case "rules": html = viewRules(); break;
+      case "wardrobe": html = viewWardrobe(); break;
       case "resident": html = viewResident(); break;
       case "mistress": html = state.mistress ? viewMistress() : viewCreate(); break;
       case "game":
@@ -1458,6 +1669,61 @@
         break;
       case "mistress": goView("mistress"); break;
       case "house": goView("house"); break;
+      case "rules": goView("rules"); break;
+      case "wardrobe": goView("wardrobe"); break;
+      case "set-rule":
+        var res4 = RR.change(state, el.getAttribute("data-rule"), el.getAttribute("data-option"));
+        if (res4.ok) {
+          saveGame();
+          setFlash("Rule changed. Authority spent: " + res4.cost
+            + (res4.objectors ? ". " + res4.objectors + (res4.objectors === 1 ? " resident objects." : " residents object.") : ".")
+            + (res4.supporters ? " " + res4.supporters + " welcome it." : ""));
+        } else if (res4.why) setFlash(res4.why, true);
+        rerenderKeepingPlace(); break;
+      case "appoint":
+        var sel = document.getElementById("hk-choice");
+        var who = sel ? resident(Number(sel.value)) : null;
+        var why = RR.appoint(state, who);
+        if (why) setFlash(why, true);
+        else { saveGame(); setFlash(H.displayName(who) + " is now the Housekeeper."); }
+        rerenderKeepingPlace(); break;
+      case "contributions":
+        var c = RR.askContributions(state);
+        if (c.ok) {
+          state.money += pence(c.pounds);
+          state.house.spent.push({ label: "Contributions from the household", amount: pence(c.pounds) });
+          state.house.news.push(c.line);
+          saveGame();
+          setFlash(T(c.line) + " (" + money(pence(c.pounds)) + ")");
+        } else setFlash(c.why, true);
+        rerenderKeepingPlace(); break;
+      case "mend-toggle":
+        state.sewing.mendFirst = !state.sewing.mendFirst;
+        saveGame(); rerenderKeepingPlace(); break;
+      case "place-order":
+        var od = orderDraftNow();
+        var po = DR.placeOrder(state, od.owner, od.g, od.colour, od.fabric);
+        if (po.ok) { saveGame(); setFlash("Ordered. The cloth cost " + money(pence(po.cost)) + "."); }
+        else setFlash(po.why, true);
+        rerenderKeepingPlace(); break;
+      case "cancel-order":
+        DR.cancelOrder(state, Number(el.getAttribute("data-order")));
+        saveGame(); setFlash("Order cancelled. The cloth goes into the scrap basket."); rerenderKeepingPlace(); break;
+      case "buy":
+        var item = el.closest(".shop-item");
+        var forSel = item ? item.querySelector("select.for") : null;
+        var b = DR.buy(state, el.getAttribute("data-shop"), Number(el.getAttribute("data-key")), forSel ? Number(forSel.value) : -1);
+        if (b.ok) { saveGame(); setFlash("Bought for " + money(pence(b.price)) + "." + (b.pit ? (b.pit >= 2 ? " The trip to London brought a good dose of the Pit home." : " The trip brought a little of the Pit home.") : "")); }
+        else setFlash(b.why, true);
+        rerenderKeepingPlace(); break;
+      case "mail":
+        var mitem = el.closest(".shop-item");
+        var mfor = mitem ? mitem.querySelector("select.for") : null;
+        var mcol = mitem ? mitem.querySelector("select.colour") : null;
+        var mo = DR.orderByMail(state, Number(el.getAttribute("data-index")), mfor ? Number(mfor.value) : -1, mcol ? mcol.value : "");
+        if (mo.ok) { saveGame(); setFlash("Ordered by post for " + money(pence(mo.price)) + ". It will arrive in " + DR.data.shops.mail.weeks + " weeks."); }
+        else setFlash(mo.why, true);
+        rerenderKeepingPlace(); break;
       case "repair":
         if (EC.repair(state, el.getAttribute("data-room"))) { saveGame(); setFlash("Repaired. The cost goes into this week’s accounts."); }
         rerenderKeepingPlace(); break;
@@ -1493,6 +1759,16 @@
       if (el) el.focus();
     }
   }
+
+  // The Sewing Room order form.
+  document.addEventListener("change", function (ev) {
+    var el = ev.target;
+    if (!el || !el.getAttribute || !el.getAttribute("data-order-field") || view !== "wardrobe") return;
+    var f = el.getAttribute("data-order-field");
+    orderDraftNow();
+    orderDraft[f] = f === "owner" ? Number(el.value) : el.value;
+    rerenderKeepingPlace();
+  });
 
   // The creation screen: selects redraw the form; typing only refreshes the preview.
   document.addEventListener("change", function (ev) {

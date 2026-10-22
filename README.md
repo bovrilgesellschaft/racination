@@ -3,12 +3,12 @@
 A household-management game of devotion, discipline and the Pit, 1983–1989.
 Adults only (18+).
 
-Current build: **Milestone 4a, the household economy.** Real weekly accounts
-(paying guests, publications, needlework, contributions; rent, provisions,
-coal, post), a House page of rooms with Period and Condition to repair and
-restore, the Pit meter, seasons, the outside world's events on their real
-dates, and two new ways to lose: bankruptcy and the Pit. Milestones 1 to 3
-(the turn, residents, the rota and the Mistress) are all still here.
+Current build: **Milestone 4, the household** (4a and 4b). Weekly accounts,
+rooms to repair and restore, the Pit, seasons and the outside world's events
+(4a); house rules, the Housekeeper, Authority as something the Mistress spends,
+a Sewing Room that makes clothes to measure and mends them, three places to buy
+clothes, and garments that wear out (4b). Milestones 1 to 3 (the turn,
+residents, the rota and the Mistress) are all still here.
 
 ## How to play it
 
@@ -37,7 +37,10 @@ Everything in the `data` folder is for editing:
   outside world's dated events and the endings' words.
 - `data/appearance.js`: the appearance lists (from the spreadsheet), hair
   styles, make-up, expressions and the sentences descriptions are built from.
-- `data/wardrobe.js`: the 1930s and modern garments.
+- `data/wardrobe.js`: the 1930s and modern garments, what making them costs,
+  the shops, and how fast clothes wear.
+- `data/rules.js`: the house rules and their effects, Authority costs, the
+  Housekeeper and contributions.
 - `data/residents.js`: names, backgrounds, duties, desires, ties, secrets,
   the weekly drift of the meters, and the household's lines.
 - `data/mistress.js`: the Mistress's creation choices, backgrounds, styles,
@@ -69,6 +72,8 @@ for checking the game and will be removed before release.
 | `household.js` | Making, describing and dressing residents; their weekly meters |
 | `mistress.js` | The Mistress: creation choices, description, tokens, her weekly meters |
 | `economy.js` | The weekly accounts, rooms, guests, the Pit and the endings it can cause |
+| `rules.js` | House rules, objections, the Housekeeper, contributions |
+| `dress.js` | The Sewing Room, the shops, deliveries and wear |
 | `data/` | Figures and words you can edit |
 | `fonts/` | The two fonts and their licences |
 
