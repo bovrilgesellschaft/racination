@@ -77,6 +77,7 @@
       if (rule === "open" && r.meters.racination > 60 && r.meters.devotion > 50) d += F.content;
       if (r.extractedAreas && Object.keys(r.extractedAreas).length) d += F.reasons.extracted;
       if (SL) {
+        d += (F.perSeverity || 0) * SL.severity(state);
         if (SL.has(state, "gate")) d += F.reasons.gate;
         if (SL.has(state, "severance")) d += F.reasons.severance;
         if (SL.has(state, "shunning") && r.meters.doubt > 60) d += F.reasons.shunned;

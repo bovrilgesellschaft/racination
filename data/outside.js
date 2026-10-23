@@ -53,7 +53,7 @@ window.RACINATION_DATA.outside = {
   },
   press: {
     decay: 0.3,
-    perSeverity: 0.15,
+    perSeverity: 0.08,
     perAppalledGuest: 0.6,
     perHit: 3,                 // a cassette hit, once
     perExposed: 4,             // a Working seen on the downs, once
@@ -77,6 +77,7 @@ window.RACINATION_DATA.outside = {
   family: {
     base: 0.25,
     doubtAbove: 60, doubt: 0.5,
+    perSeverity: 0.06,         // letters home start to sound strange
     contact: { open: -0.5, letters: -0.15, none: 0.5 },
     content: -0.4,             // a racinated, devoted woman on open contact reassures them
     reasons: { extracted: 1.0, gate: 1.0, severance: 0.8, shunned: 1.0, loveEnded: 0.3 },

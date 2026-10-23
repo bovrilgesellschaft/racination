@@ -1793,7 +1793,7 @@
     function part(kind, title, band) {
       var w = OW.word(kind, o[kind]);
       return '<h2 class="band ' + band + '">' + esc(title) + "</h2>"
-        + '<div class="pane"><p><strong>' + esc(capital(w.word)) + ".</strong> " + esc(T(w.line)) + "</p></div>";
+        + '<div class="pane"><p>' + esc(T(w.line)) + "</p></div>";
     }
     var fams = state.residents.filter(function (r) { return r.family; }).map(function (r) {
       return "<tr><td>" + residentLink(r) + "</td><td>" + esc(OW.familyWord(r)) + "</td></tr>";
