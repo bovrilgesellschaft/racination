@@ -81,14 +81,16 @@ window.RACINATION_DATA.consent = {
     { id: "reading", label: "Reading aloud", note: "Racination, especially for the reader." },
     { id: "courtship", label: "Courtship", note: "An evening with someone she is courting." },
     { id: "talk", label: "A talk in the Study", note: "The Mistress learns something of her limits (one a week)." },
-    { id: "rest", label: "Rest", note: "Nothing happens." }
+    { id: "rest", label: "Rest", note: "Nothing happens." },
+    { id: "vigils", label: "Vigils", note: "A night in the Chapel. Devotion; a little Racination lost to tiredness." }
   ],
   registerEffects: {
     devotions: { devotion: 0.5 },
     dancing: { racination: 0.4 },
     reading: { racination: 0.3 },
     rest: { doubt: -0.2 },
-    talk: { doubt: -0.3 }
+    talk: { doubt: -0.3 },
+    vigils: { devotion: 0.6, racination: -0.1 }
   },
   admirationChance: 0.15,      // two residents dancing or reading together
 

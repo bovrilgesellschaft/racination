@@ -36,7 +36,8 @@
       .concat((D.stories || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }))
       .concat((D.romanceEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }))
       .concat((D.workingEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }))
-      .concat((D.computingEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }));
+      .concat((D.computingEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }))
+      .concat((D.slideEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }));
   }
 
   function byId(id) {
@@ -146,6 +147,10 @@
       var WK = window.RACINATION_WORKING;
       if (!WK || !WK.conditionOK(state, w.working)) return null;
     }
+    if (w.slide) {
+      var SLc = window.RACINATION_SLIDE;
+      if (!SLc || !SLc.conditionOK(state, w.slide)) return null;
+    }
     if (w.computing) {
       var CPc = window.RACINATION_COMPUTING;
       if (!CPc || !CPc.conditionOK(state, w.computing)) return null;
@@ -252,6 +257,9 @@
 
     // A resident whose Doubt has been very high for some weeks asks to leave.
     var leaveEvent = byId(S.leaveEventId || "wants-to-leave");
+    // Under the Gate, nobody asks: they are kept, or they go over the wall (slide.js).
+    var SLg = window.RACINATION_SLIDE;
+    if (SLg && SLg.has(state, "gate")) leaveEvent = null;
     if (leaveEvent) {
       state.residents.forEach(function (r) {
         if ((r.highDoubtWeeks || 0) >= (S.leaveAfterWeeks || 3)) {
@@ -459,6 +467,10 @@
       var WK2 = window.RACINATION_WORKING;
       if (WK2) WK2.applyEffects(state, fx.working);
     }
+    if (fx.slide) {
+      var SLe = window.RACINATION_SLIDE;
+      if (SLe) SLe.applyEffects(state, p, fx.slide);
+    }
     if (fx.computing) {
       var CPe = window.RACINATION_COMPUTING;
       if (CPe) CPe.applyEffects(state, fx.computing);
@@ -469,6 +481,12 @@
       });
     }
     return notes;
+  }
+
+  function halveDoubt(fx) {
+    var out = JSON.parse(JSON.stringify(fx));
+    ["household", "resident", "other"].forEach(function (k) { if (out[k] && out[k].doubt > 0) out[k].doubt /= 2; });
+    return out;
   }
 
   function choose(state, key, index, rand) {
@@ -502,6 +520,8 @@
       if (c.effects && chosen.effects) apply(state, p, c.effects);
     }
     var filledResult = fillText(state, resultText, p);
+    // Under Play, the house laughs off an incursion of the Pit: it costs half the Doubt (Milestone 9b).
+    if (e.incursion && fx && state.events.belief < -20) fx = halveDoubt(fx);
     apply(state, p, fx);
     var st = settings();
     if (c.rhetoric === "belief") state.events.belief = clamp(state.events.belief + st.rhetoric, -100, 100);

@@ -24,17 +24,18 @@
   var SK = window.RACINATION_SCENEKIT;
   var WK = window.RACINATION_WORKING;
   var CP = window.RACINATION_COMPUTING;
+  var SL = window.RACINATION_SLIDE;
 
   var SAVE_KEY = "racination.save.v1";
   var ADULT_KEY = "racination.adult";
   var TESTING_KEY = "racination.testing";
-  var SAVE_VERSION = 10;
+  var SAVE_VERSION = 11;
 
   var screenEl = document.getElementById("screen");
   var borderEl = document.getElementById("border");
   var fileInput = document.getElementById("import-file");
 
-  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !EV || !IN || !SK || !WK || !CP || !DATA.computing || !DATA.computingEvents || !DATA.working || !DATA.ephemeris || !DATA.workingEvents || !DATA.scenekit || !DATA.consent || !DATA.romanceEvents || !DATA.events || !DATA.letters || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
+  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !EV || !IN || !SK || !WK || !CP || !SL || !DATA.slide || !DATA.slideEvents || !DATA.computing || !DATA.computingEvents || !DATA.working || !DATA.ephemeris || !DATA.workingEvents || !DATA.scenekit || !DATA.consent || !DATA.romanceEvents || !DATA.events || !DATA.letters || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
     screenEl.innerHTML = '<p class="warn">One of the game’s files is missing or has a mistake in it, '
       + "so the game cannot start. If you have just edited a file in the data folder, check it for a missing "
       + "comma or quotation mark.</p>";
@@ -172,6 +173,7 @@
   SK.setRandom(rand);
   WK.setRandom(rand);
   CP.setRandom(rand);
+  SL.setRandom(rand);
 
   function pick(list, avoid) {
     if (!list || !list.length) return "";
@@ -230,6 +232,7 @@
     state.scenes = { current: null };
     WK.ensure(state);
     CP.ensure(state);
+    SL.ensure(state);
     return state;
   }
 
@@ -283,6 +286,9 @@
     // Milestone 9: the Computing Room.
     CP.ensure(s);
     if (s.version < 10) s.version = 10;
+    // Milestone 9b: the Slide.
+    SL.ensure(s);
+    if (s.version < 11) s.version = 11;
     if (!Array.isArray(s.departed)) s.departed = [];
     if (typeof s.nextId !== "number") s.nextId = s.residents.length + 1;
     return s;
@@ -339,7 +345,7 @@
     } else {
       var season = seasonOf(mondayOf(state.week));
       var lines = (HOUSE.matinsLines[season] || []).concat(HOUSE.matinsLines.any || []);
-      state.matinsLine = pick(lines, state.lastLine);
+      state.matinsLine = SL.matinsLine(state, pick(lines, state.lastLine));
       // A house that has cooled says so at Matins (Milestone 6).
       var cool = IN.coolLine(state);
       if (cool) state.matinsLine = cool;
@@ -398,6 +404,7 @@
     EV.weekly(state);
     IN.weekly(state).forEach(function (e) { events.push(e); });
     WK.weekly(state).forEach(function (e) { events.push(e); });
+    SL.weekly(state).forEach(function (e) { events.push(e); });
     EV.takeNotes(state).forEach(function (n) { events.unshift(n.result); });
 
     var people = state.residents.map(function (r) {
@@ -433,7 +440,7 @@
       pit: Math.round(state.house.pit),
       pitChange: state.house.pitLast
     });
-    state.reckoningLine = pick(HOUSE.reckoningLines, null);
+    state.reckoningLine = SL.reckoningLine(state, pick(HOUSE.reckoningLines, null));
     state.endReason = state.endReason || EC.endReason(state);
   }
 
@@ -464,7 +471,7 @@
       state.reckoningLine = null;
       if (state.week >= TOTAL_WEEKS) {
         state.ended = true;
-        state.endReason = "decade";
+        state.endReason = SL.severity(state) >= 8 ? "fold" : "decade";
         state.phase = "end";
       } else {
         state.phase = "matins";
@@ -588,7 +595,7 @@
       + "<span>" + weekText + "</span>"
       + "<span>" + shortDate(d) + " · " + capital(seasonOf(d)) + "</span>"
       + "<span>" + state.residents.length + " in the house</span>"
-      + (state.house ? '<span class="pit-status">Pit ' + Math.round(state.house.pit) + "</span>" : "")
+      + (state.house ? '<span class="pit-status band-' + SL.band(state).id + '">Pit ' + Math.round(state.house.pit) + "</span>" : "")
       + "<span>" + moneyHTML(state.money) + "</span></div>"
       + '<nav class="menu" aria-label="Game menu">'
       + (view !== "game" ? '<button data-act="back">The week</button>' : "")
@@ -724,7 +731,7 @@
   }
 
   function residentLink(r) {
-    return '<button class="link" data-act="resident" data-id="' + r.id + '">' + esc(H.displayName(r)) + "</button>";
+    return '<button class="link" data-act="resident" data-id="' + r.id + '">' + esc(SL.nameFor(state, r)) + "</button>";
   }
 
   /* ---------- The week ---------- */
@@ -757,10 +764,10 @@
       + '<div class="pane"><p>' + esc(T(state.matinsLine)) + "</p>"
       + (state.house && state.house.news && state.house.news.length
         ? state.house.news.map(function (n) { return '<p class="news">' + esc(T(n)) + "</p>"; }).join("") : "")
-      + (MI.inCrisis(state.mistress) ? '<p class="note">' + esc(T(H.helpers.fixedPick(MI.data.crisisLines, "c" + state.week))) + "</p>" : "")
+      + (MI.inCrisis(state.mistress) ? '<p class="note">' + esc(T(SL.crisisLine(state) || H.helpers.fixedPick(MI.data.crisisLines, "c" + state.week))) + "</p>" : "")
       + "</div>"
       + '<h2 class="band blue">' + esc(reportTitle()) + "</h2>"
-      + '<div class="pane">' + report + moods + housekeeperNotes() + "</div>"
+      + '<div class="pane">' + (SL.band(state).id === "breach" ? "<p>" + esc("The Pit stands at " + Math.round(state.house.pit) + ". Money in hand: " + money(state.money) + ".") + "</p>" : report + moods + housekeeperNotes()) + "</div>"
       + postSection()
       + (EV.unanswered(state, "letter").length
         ? '<div class="actions"><button class="primary" disabled>Answer the post first</button>'
@@ -937,7 +944,7 @@
 
   function reportTitle() {
     var hk = RR.housekeeper(state);
-    return hk ? RR.data.housekeeper.reportTitle.replace("{name}", H.displayName(hk)) : "The Housekeeper’s report";
+    return SL.reportTitle(state, hk ? H.displayName(hk) : "The Housekeeper");
   }
 
   function housekeeperNotes() {
@@ -946,6 +953,66 @@
     var w = RR.housekeeperWarning(state);
     return w ? '<p class="warn">' + esc(w) + "</p>" : "";
   }
+
+  /* ---------- The Slide on the Rules page (Milestone 9b) ---------- */
+
+  function ordinanceSection() {
+    var ords = SL.inForce(state);
+    var body = ords.length ? ords.map(function (o) {
+      var since = state.slide.ordinances[o.id].since;
+      var r = SL.reliefOf(state, o) / (o.relief || 1);
+      var hold = o.relief ? (r > 0.8 ? "It holds the Pit back strongly." : r > 0.45 ? "Its force is wearing thin." : "The house has grown used to it.") : "It was done once, and cannot be undone.";
+      var cost = SL.repealCost(state, o.id);
+      return '<div class="rule-option current"><button data-act="repeal" data-ord="' + o.id + '">Repeal, ' + cost + " Authority</button>"
+        + '<span class="small"><strong>' + esc(o.name) + "</strong>: " + esc(o.about) + ' <span class="note">Since ' + esc(shortDate(mondayOf(since))) + ". " + esc(hold) + "</span></span></div>";
+    }).join("") : '<p class="small note">No Ordinance stands. They come, if they come, as petitions from the household, or as thoughts in the Mistress’s sleepless hours.</p>';
+    return '<fieldset class="create-section"><legend>The Ordinances</legend>' + body
+      + (ords.length ? '<p class="small note">Repealing grows dearer the longer an Ordinance stands, and the devout feel it as a betrayal.</p>' : "") + "</fieldset>";
+  }
+
+  function concessionSection() {
+    var Sd = SL.data;
+    var body = Sd.concessions.map(function (c) {
+      var on = SL.hasConcession(state, c.id);
+      return '<div class="rule-option' + (on ? " current" : "") + '">'
+        + (on ? '<button data-act="withdraw-con" data-con="' + c.id + '">Withdraw</button>'
+              : '<button data-act="grant-con" data-con="' + c.id + '">Grant, ' + Sd.concessionAuthority + " Authority</button>")
+        + '<span class="small"><strong>' + esc(c.name) + "</strong>. " + esc(c.note) + (on ? ' <span class="note">Granted.</span>' : "") + "</span></div>";
+    }).join("");
+    return '<fieldset class="create-section"><legend>Concessions</legend>'
+      + '<p class="small note">Contact with the outside world, allowed openly. Each lets a little of the Pit in, and ends the furtive kind of incursion it replaces. The devout mind.</p>'
+      + body + "</fieldset>";
+  }
+
+  var loveText = null;
+  function viewLoveEnded() {
+    var L = SL.data.loveEnded;
+    return '<div class="status"><span class="house">' + esc(HOUSE.name) + "</span><span>" + esc(shortDate(mondayOf(Math.min(state.week, TOTAL_WEEKS - 1)))) + "</span></div>"
+      + '<div class="body">'
+      + '<h2 class="band black">' + esc(L.title) + "</h2>"
+      + '<div class="pane scene-pane"><p>' + esc(T(loveText || L.plain)) + "</p></div>"
+      + '<div class="actions"><button class="primary" data-act="love-continue" data-primary>' + esc(L.button) + "</button></div>"
+      + "</div>";
+  }
+
+  // The end of love arrives when the player next reaches for it.
+  function reachingContext(name, el) {
+    var nm = function (id) { return id === IN.MISTRESS ? MI.displayName(state.mistress) : (resident(id) ? H.displayName(resident(id)) : ""); };
+    if (name === "court-scene") return { kind: "evening", a: nm(Number(el.getAttribute("data-a"))), b: nm(Number(el.getAttribute("data-b"))) };
+    if (name === "encourage") {
+      var ca = document.getElementById("court-a"), cb = document.getElementById("court-b");
+      return { kind: "evening", a: ca ? nm(Number(ca.value)) : "", b: cb ? nm(Number(cb.value)) : "" };
+    }
+    if (name === "hear-petition") return { kind: "rite", a: nm(Number(el.getAttribute("data-id"))) };
+    if (name === "bring-charge") { var cw = document.getElementById("charge-who"); return { kind: "rite", a: cw ? nm(Number(cw.value)) : "" }; }
+    if (name === "keep-working") return { kind: "working" };
+    if (name === "guest-rite") {
+      var g = state.house && state.house.guestList ? state.house.guestList[Number(el.getAttribute("data-index"))] : null;
+      return { kind: "guest", a: g ? g.name : "" };
+    }
+    return { kind: "plain" };
+  }
+  var REACHING = ["court-scene", "encourage", "hear-petition", "bring-charge", "keep-working", "guest-rite"];
 
   function viewRules() {
     var m = state.mistress;
@@ -999,7 +1066,7 @@
       + '<div class="body">'
       + '<h2 class="band magenta">The House Rules</h2>'
       + '<p class="dateline">' + esc(MI.displayName(m)) + " has " + Math.floor(m.meters.authority) + " Authority to spend</p>"
-      + '<div class="pane create">' + sections + hkSection + contrib + "</div>"
+      + '<div class="pane create">' + sections + ordinanceSection() + concessionSection() + hkSection + contrib + "</div>"
       + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div>'
       + "</div>";
   }
@@ -1226,6 +1293,7 @@
   function viewEvenings() {
     var C6 = IN.data;
     var open = IN.gatesOpen(state);
+    var gone = SL.loveEnded(state);   // after the end of love, these parts of the page are simply not there
     var rows = state.residents.map(function (r) {
       var c = IN.activeCourtship(state, r.id);
       var with_ = c ? (c.a === r.id ? c.b : c.a) : null;
@@ -1274,17 +1342,17 @@
       + '<div class="body">'
       + '<h2 class="band magenta">The Evenings</h2>'
       + '<p class="dateline">Week of ' + esc(longDate(mondayOf(state.week))) + "</p>"
-      + (open ? "" : '<p class="warn">' + esc(C6.closedNote) + "</p>")
+      + (open || gone ? "" : '<p class="warn">' + esc(C6.closedNote) + "</p>")
       + '<div class="pane">' + (state.residents.length ? rows : "<p>The house is empty.</p>") + "</div>"
       + '<details class="pane notes"><summary>About the evenings</summary><ul>' + notes + "</ul></details>"
-      + '<h2 class="band blue">Courtship</h2>'
-      + '<div class="pane">' + courtshipList() + courtshipOffers() + courtForm + "</div>"
-      + '<h2 class="band black">The rite</h2>'
-      + '<div class="pane">'
-      + (rite ? '<p>A hearing is open. <button data-act="open-rite">Return to it</button></p>' : "")
-      + (petitions || '<p class="small note">No one has petitioned this week.</p>') + chargeForm + "</div>"
+      + (gone ? "" : '<h2 class="band blue">Courtship</h2>'
+        + '<div class="pane">' + courtshipList() + courtshipOffers() + courtForm + "</div>"
+        + '<h2 class="band black">The rite</h2>'
+        + '<div class="pane">'
+        + (rite ? '<p>A hearing is open. <button data-act="open-rite">Return to it</button></p>' : "")
+        + (petitions || '<p class="small note">No one has petitioned this week.</p>') + chargeForm + "</div>")
       + workingSection()
-      + (guests ? '<h2 class="band magenta">This week’s paying guests</h2><div class="pane">' + guests
+      + (guests && !gone ? '<h2 class="band magenta">This week’s paying guests</h2><div class="pane">' + guests
         + '<p class="small note">A guest who asked for the rite will usually love it, and say so. A guest who never asked may agree because she cannot think how to refuse.</p></div>' : "")
       + '<div class="actions"><button class="primary" data-act="from-evenings" data-primary>'
       + (EV.pendingFor(state, "business").length ? "On to the week’s business" : "On to Sunday") + "</button></div>"
@@ -1353,19 +1421,31 @@
         + '<p class="small">Coercion score: ' + Math.round(IN.score(state) * 10) / 10 + " (raw " + Math.round(IN.rawScore(state) * 10) / 10
         + ", credit " + Math.round(R.credit * 10) / 10 + "). Rung: " + esc(IN.rungName(state)) + (R.locked ? " (locked at " + esc(IN.data.rungs[R.locked].name) + ")" : "") + ".</p>"
         + '<p class="small">Marks: ' + esc(marks || "none") + ". Records: " + esc(recs || "none") + ". House-word weeks: " + R.houseWordWeeks
-        + ". Isolation weeks: " + ((state.rules && state.rules.isolationWeeks) || 0) + ".</p></div>";
+        + ". Isolation weeks: " + ((state.rules && state.rules.isolationWeeks) || 0) + ".</p>"
+        + '<p class="small">The Slide: band ' + esc(SL.band(state).name) + ", tide " + SL.tide(state) + ", Severity " + SL.severity(state) + ", voice " + esc(SL.voice(state).id)
+        + ", Ordinances " + esc(SL.inForce(state).map(function (o) { return o.name + " (relief " + Math.round(SL.reliefOf(state, o) * 10) / 10 + ")"; }).join(", ") || "none")
+        + ", granted " + state.slide.granted + ", refused " + state.slide.refused + (SL.lovePending(state) ? ", love ending" : "") + (SL.loveEnded(state) ? ", love ended" : "") + ".</p></div>";
     }
     return statusBar() + takeFlash()
       + '<div class="body">'
       + '<h2 class="band magenta">Bonds</h2>'
       + '<p class="dateline">Courtships, admirations and bonds in the house</p>'
-      + '<div class="pane">' + courtshipList()
-      + '<p class="small note">Courtship moves through Admiration, Understanding, Attachment and Devotion. At Devotion a couple may ask to be bonded. '
-      + "Two women of the same polarity may court, though more slowly, and a house given to Belief will find it irregular.</p></div>"
-      + (IN.gatesOpen(state) ? "" : '<p class="warn">' + esc(IN.data.closedNote) + "</p>")
+      + '<div class="pane">' + (SL.loveEnded(state) ? endedBondsList() : courtshipList())
+      + (SL.loveEnded(state) ? "" : '<p class="small note">Courtship moves through Admiration, Understanding, Attachment and Devotion. At Devotion a couple may ask to be bonded. '
+      + "Two women of the same polarity may court, though more slowly, and a house given to Belief will find it irregular.</p>") + "</div>"
+      + (IN.gatesOpen(state) || SL.loveEnded(state) ? "" : '<p class="warn">' + esc(IN.data.closedNote) + "</p>")
       + tools
       + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div>'
       + "</div>";
+  }
+
+  function endedBondsList() {
+    var list = state.slide.endedBonds;
+    if (!list.length) return "<p>Nobody is courting.</p>";
+    var nm = function (id) { return id === IN.MISTRESS ? MI.displayName(state.mistress) : (resident(id) ? SL.nameFor(state, resident(id)) : (state.departed.filter(function (d) { return d.id === id; })[0] || {}).name || "one who has gone"); };
+    return '<ul class="plain">' + list.map(function (b) {
+      return "<li>" + esc(nm(b.a)) + " and " + esc(nm(b.b)) + ": " + esc(SL.data.loveEnded.bondLabel) + ", " + esc(shortDate(sundayOf(b.week))) + "</li>";
+    }).join("") + "</ul>";
   }
 
   function notebookSection(r) {
@@ -1760,7 +1840,7 @@
         + "</div>";
     }).join("");
     var gone = state.departed.map(function (p) {
-      var how = p.reason === "racinated" ? "departed racinated" : "left the house";
+      var how = SL.departedWord(p);
       return "<li>" + esc(p.name) + " (" + esc(p.first) + "), " + how + ", " + esc(shortDate(sundayOf(p.week))) + "</li>";
     }).join("");
 
@@ -2166,6 +2246,7 @@
       case "scene": html = viewScene(); break;
       case "settings": html = viewSettings(); break;
       case "author-confirm": html = viewAuthorConfirm(); break;
+      case "love-ended": html = viewLoveEnded(); break;
       case "bonds": html = viewBonds(); break;
       case "calendar": html = viewCalendar(); break;
       case "computing": html = viewComputing(); break;
@@ -2177,6 +2258,13 @@
         else if (state.phase === "evenings") html = viewEvenings();
         else if (state.phase === "business") html = viewBusiness();
         else if (state.phase === "reckoning" && entryFor(state.week)) html = viewReckoning();
+        else if (SL.loveDue(state)) {
+          // Nobody reached for it in time: it comes at Matins.
+          loveText = SL.endLove(state, { kind: "plain" });
+          saveGame();
+          view = "love-ended";
+          html = viewLoveEnded();
+        }
         else { state.phase = "matins"; html = viewMatins(); }
         break;
       default: html = viewTitle();
@@ -2269,7 +2357,26 @@
   }
 
   function act(name, el) {
+    if (state && REACHING.indexOf(name) >= 0 && SL.lovePending(state)) {
+      loveText = SL.endLove(state, reachingContext(name, el));
+      saveGame();
+      goView("love-ended");
+      return;
+    }
     switch (name) {
+      case "love-continue": loveText = null; goView("game"); break;
+      case "repeal":
+        var rp2 = SL.repeal(state, el.getAttribute("data-ord"));
+        if (!rp2.ok) setFlash(rp2.why, true); else { saveGame(); setFlash(rp2.text); }
+        rerenderKeepingPlace(); break;
+      case "grant-con":
+        var gc = SL.grant(state, el.getAttribute("data-con"));
+        if (!gc.ok) setFlash(gc.why || "That cannot be granted.", true); else { saveGame(); setFlash(gc.text); }
+        rerenderKeepingPlace(); break;
+      case "withdraw-con":
+        var wc = SL.withdraw(state, el.getAttribute("data-con"));
+        if (wc.ok) { saveGame(); setFlash(wc.text); }
+        rerenderKeepingPlace(); break;
       case "skip-load": if (view === "loading") finishLoading(); break;
       case "adult-yes":
         storage.set(ADULT_KEY, "yes");

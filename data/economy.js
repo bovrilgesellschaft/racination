@@ -140,7 +140,8 @@ window.RACINATION_DATA.economy = {
     // Taken off each week:
     periodCleanses: 1.6,     // × the house's average Period ÷ 100
     perDevotions: 0.3,       // each resident on Devotions
-    settles: 0.055,          // each week this share of it settles of its own accord
+    settles: 0.055,
+    racinatedResist: 150,    // a woman at Racination 75 feels half the Pit's harm (Milestone 9b)          // each week this share of it settles of its own accord
     // How the Pit reaches residents:
     neutral: 30,             // below this the Pit does residents no harm (and a little good)
     racinationPerPit: 0.012, // Racination lost each week per point of Pit above the neutral line
@@ -196,18 +197,22 @@ window.RACINATION_DATA.economy = {
       text: "Half the household has gone to a farmhouse near Burford with the Housekeeper, to keep the faith properly. Hesperis House is quieter than it has ever been, and colder, and nobody quite knows which half was right." },
     trial: { title: "R v. the Mistress",
       text: "The jury found against {mistress.name} on most of the counts. The house was sold to pay the costs, and the women who had lived in it went back to their families, or to bedsits in Oxford, or to nobody quite knew where. Some of them still keep the house's hours, alone. None of them will speak of it to the papers, though the papers have asked." },
+    fold: { title: "The Fold",
+      text: "December 1989. The decade ends, and the house has outlasted it. The Pit is held at the gate. The accounts balance. Every bed is full, and every woman in them rose at six this morning without being called. Matins was said in perfect unison. The Record for the year runs to eleven pages and contains no faults. There is nothing left in the house that the Pit could want, and nothing left in it worth saving. The last entry, in the Housekeeper's hand, is an inventory." },
     decade: { title: "The End of the Decade",
       text: "December 1989. The decade the house never consented to has ended without consulting it. Whatever the house has become, it is still standing, and the Housekeeper has ruled off the last page." }
   },
 
   /* ---------- Lines in the Housekeeper's report ---------- */
 
+  // The six bands of Milestone 9b (their Matins lines and the rest are in data/slide.js).
   pitWords: [
-    { below: 20, word: "faint", line: "The air in the house is clean this week." },
-    { below: 40, word: "present", line: "The Pit is about the house as a draught is: noticeable at the doors." },
-    { below: 60, word: "strong", line: "The Pit is strong in the house. Someone has been humming a tune from the wireless." },
-    { below: 80, word: "heavy", line: "The Pit lies heavy on the house. Slang has been heard at supper, and not corrected." },
-    { below: 101, word: "overwhelming", line: "The Pit is at the door, and has its foot in it." }
+    { below: 20, word: "clean", line: "The air in the house is clean this week. It smells of beeswax." },
+    { below: 40, word: "a draught", line: "The Pit is about the house as a draught is: noticeable at the doors." },
+    { below: 60, word: "damp", line: "There is something in the walls. Someone has been humming a tune from the wireless." },
+    { below: 80, word: "seeping in", line: "It is coming up through the floor. Slang has been heard at supper, and not corrected." },
+    { below: 95, word: "a flood", line: "The Pit is in the house. Matins is said over it." },
+    { below: 101, word: "a breach", line: "" }
   ],
   guestLines: {
     none: "No paying guests are expected this week.",

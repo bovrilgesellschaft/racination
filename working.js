@@ -161,6 +161,7 @@
     var w = state.working;
     if (!w.discovered) return "The house knows nothing of the Working.";
     if (w.stance === "forbid") return "The Mistress has forbidden the Working.";
+    if (window.RACINATION_SLIDE && window.RACINATION_SLIDE.loveEnded(state)) return "The green notebook says that the Working needs love. There is none in the house to draw on.";
     var I = IN();
     if (I && !I.gatesOpen(state)) return I.data.closedNote;
     if (w.keptWeek === state.week) return "A Working has been kept this week already.";

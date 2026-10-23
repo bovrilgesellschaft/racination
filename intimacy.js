@@ -86,7 +86,12 @@
     return "";
   }
 
-  function gatesOpen(state) { return effectiveRung(state) < C.gatesCloseAt; }
+  // Milestone 9b: once love has ended in the house, it does not come back.
+  function gatesOpen(state) {
+    var SLg = window.RACINATION_SLIDE;
+    if (SLg && SLg.loveEnded(state)) return false;
+    return effectiveRung(state) < C.gatesCloseAt;
+  }
 
   /* ============================================================
      State
@@ -137,7 +142,8 @@
     var fam = d.familyContact[(state.rules && state.rules.familyContact) || "open"] || 0;
     var v = d.base + d.perMissingTie * missing + d.perYearInHouse * months / 12 + fam
       + d.perRefusal * (r.refusals || 0) + (r.harmDependency || 0)
-      + (bondOf(state, r.id) ? d.bonded : 0);
+      + (bondOf(state, r.id) ? d.bonded : 0)
+      + (window.RACINATION_SLIDE ? window.RACINATION_SLIDE.severity(state) * (window.RACINATION_SLIDE.data.dependencyPerSeverity || 0) : 0);
     return clamp(Math.round(v), 0, 100);
   }
 
@@ -222,7 +228,11 @@
   function registerOptions(state, r) {
     var open = gatesOpen(state);
     var court = activeCourtship(state, r.id);
-    return C.registers.map(function (g) {
+    var SLr = window.RACINATION_SLIDE;
+    return C.registers.filter(function (g) {
+      if (g.id === "vigils") return !!(SLr && (SLr.has(state, "vigils") || SLr.loveEnded(state)));
+      return !SLr || SLr.registerAllowed(state, g.id);
+    }).map(function (g) {
       var why = "";
       if (g.id === "courtship") {
         if (!open) why = "the house is not in a state for it";
@@ -631,6 +641,9 @@
     var R = state.romance;
     var raw = rawScore(state);
     if (raw <= R.lastRaw + 0.001) R.credit += C.amendsPerSoundWeek;
+    // Milestone 9b: inside the Fold, nobody talks. Only the lost do, so the score climbs at half the pace.
+    var SLv = window.RACINATION_SLIDE;
+    if (SLv && SLv.voice(state).id === "fold" && raw > R.lastRaw) R.credit += (raw - R.lastRaw) / 2;
     R.lastRaw = raw;
     // Credit can only draw the score down to nothing.
     R.credit = Math.min(R.credit, raw);
@@ -752,6 +765,7 @@
       var eb = bIsMistress ? true : evening(state, b).reg === "courtship";
       var step = (ea && eb ? 1 : (ea || eb ? 0.5 : 0)) * C.progressPerEvening;
       if (samePolarity(state, c)) step *= C.samePolarityPace;
+      if (window.RACINATION_SLIDE && window.RACINATION_SLIDE.has(state, "faults")) step *= window.RACINATION_SLIDE.data.faultsCourtship;
       if (!step) return;
       var before = stageOf(c.progress);
       c.progress += step;

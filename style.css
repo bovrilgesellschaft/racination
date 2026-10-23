@@ -726,3 +726,11 @@ a.button:hover, a.button:focus-visible { background: var(--byellow); color: var(
 button.stop { background: var(--magenta); color: var(--bwhite); }
 button.stop:hover, button.stop:focus-visible { background: var(--byellow); color: var(--black); }
 .offers { margin: 0.6em 0; }
+
+/* Milestone 9b: the Pit's bands in the status bar */
+.pit-status.band-damp { color: var(--byellow); }
+.pit-status.band-seepage { background: var(--yellow); color: var(--black); padding: 0 0.3em; }
+.pit-status.band-flood { background: var(--red); color: var(--bwhite); padding: 0 0.3em; }
+.pit-status.band-breach { background: var(--bwhite); color: var(--red); padding: 0 0.3em; animation: breach 1s steps(2) infinite; }
+@keyframes breach { 50% { background: var(--red); color: var(--bwhite); } }
+@media (prefers-reduced-motion: reduce) { .pit-status.band-breach { animation: none; } }

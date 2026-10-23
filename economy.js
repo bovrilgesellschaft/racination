@@ -285,6 +285,9 @@
       + onDuty(state, "computing").length * P.perComputing
       + shabbyRooms(state) * P.perShabbyRoom
       + (state.money < 0 ? P.debt : (state.money < pence(E.worryBelow) ? P.moneyWorry : 0));
+    // Milestone 9b: the rising tide of the decade.
+    var SLd = window.RACINATION_SLIDE;
+    if (SLd) add *= SLd.inflowFactor(state);
     var sub = P.periodCleanses * averagePeriod(state) / 100
       + onDuty(state, "devotions").length * P.perDevotions
       + hs.pit * P.settles;
@@ -333,7 +336,10 @@
     var avg = averagePeriod(state);
     var shabby = shabbyRooms(state);
     state.residents.forEach(function (r) {
-      var dRac = -(hs.pit - (P.neutral || 20)) * P.racinationPerPit + (avg - 50) * E.periodRacination;
+      var pitHarm = (hs.pit - (P.neutral || 20)) * P.racinationPerPit;
+      // A racinated woman is hardier against the Pit (Milestone 9b).
+      if (pitHarm > 0) pitHarm *= Math.max(0.25, 1 - r.meters.racination / (P.racinatedResist || 150));
+      var dRac = -pitHarm + (avg - 50) * E.periodRacination;
       var rm = roomForDuty(state, r.duty);
       if (rm) dRac += (rm.period - 50) * E.roomPeriodDuty;
       var dDbt = shabby * P.doubtPerShabbyRoom;

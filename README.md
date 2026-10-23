@@ -3,13 +3,15 @@
 A household-management game of devotion, discipline and the Pit, 1983–1989.
 Adults only (18+).
 
-Current build: **Milestone 9, the Computing Room**. Hesperis Software writes
-games for the home computer and sells them on cassette: pitch a title, put up
-to three women on Computing Room duty, order a cassette run when it is
-finished, advertise, and watch the review and the sales. The market changes
-over the decade, from the boom of 1983–85 to budget games at £1.99 and a
-fading trade by 1989. A hit brings the computing press and may turn its
-writer's head. Milestones 1 to 8 are all still here.
+Current build: **Milestone 9b, the Slide**. The Pit now rises with the
+decade, through six bands from Clean to Breach, and the gentle means of holding
+it back stop being enough around 1985–86. The household begins to petition for
+Ordinances (the Silence, the Book of Faults, the Gate, the Fold and the rest),
+and the Mistress, lying awake, begins to propose them herself. They work, at
+first. Concessions (a radio, a telephone, modern clothes) are the humane
+alternative. As the house hardens, its voice changes, and at a certain point
+love ends in it, for good. A new ending, the Fold, waits at the end of that
+road. Milestones 1 to 9 are all still here.
 
 ## How to play it
 
@@ -53,6 +55,9 @@ Everything in the `data` folder is for editing:
 - `data/glossary.js`: the house's language and when each term unlocks.
 - `data/consent.js`: the consent model, the Evenings, courtship, the rite and
   its lines, paying guests' rites, and the failure-state ladder.
+- `data/slide.js`: the Slide: the rising tide, the six bands, the Ordinances,
+  the Concessions, the end of love and the three voices of the house.
+- `data/slide-events.js`: petitions, the Mistress's proposals and incursions.
 - `data/computing.js`: the Computing Room's figures: kinds of game, quality,
   cassette runs, prices, the market year by year, advertising and the reviews.
 - `data/computing-events.js`: the Computing Room's events.
@@ -100,6 +105,7 @@ for checking the game and will be removed before release.
 | `rules.js` | House rules, objections, the Housekeeper, contributions |
 | `dress.js` | The Sewing Room, the shops, deliveries and wear |
 | `events.js` | Choosing, showing and resolving events; Belief–Play; the glossary |
+| `slide.js` | The Slide: the tide, bands, Ordinances, Concessions, Severity, the end of love, the house's voice |
 | `computing.js` | The Computing Room: development, cassette runs, reviews and sales |
 | `working.js` | The Working: windows, planning, strength, nudges, the Chamber |
 | `scenekit.js` | Reading, checking and playing scenes; tiers and Settings; the scene gates |

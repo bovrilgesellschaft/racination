@@ -79,6 +79,9 @@
   }
 
   function canChange(state, id, optId) {
+    var SLr = window.RACINATION_SLIDE;
+    var locked = SLr ? SLr.ruleLocked(state, id, optId) : "";
+    if (locked && state.rules[id] !== optId) return locked;
     var p = previewChange(state, id, optId);
     if (!p.steps) return "";
     var m = state.mistress;
@@ -124,7 +127,8 @@
   // Multipliers on how much a woman's dress counts this week.
   function dressMultipliers(state) {
     var dc = current(state, "dressCode");
-    return { periodMult: dc.periodMult, pitMult: dc.pitMult };
+    var SLd = window.RACINATION_SLIDE;
+    return { periodMult: dc.periodMult * (SLd ? SLd.periodFactor(state) : 1), pitMult: dc.pitMult };
   }
 
   // The rules' weekly effect on each resident and the Mistress.

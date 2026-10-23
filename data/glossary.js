@@ -43,5 +43,17 @@ window.RACINATION_DATA.glossary = [
   { term: "The Chamber", words: ["the chamber"],
     meaning: "The room upstairs kept for the Working. It gathers Charge, as a room gathers dust, and is said to remember." },
   { term: "Mirror and Polar", words: ["mirror reading", "polar reading", "mirrors or poles"],
-    meaning: "The two readings of the Working. Polar: power comes from complement, a blonde with a brunette. Mirror: like multiplies like." }
+    meaning: "The two readings of the Working. Polar: power comes from complement, a blonde with a brunette. Mirror: like multiplies like." },
+  { term: "Ordinances", words: ["ordinance", "ordinances", "ordained"],
+    meaning: "Rules made for the house's protection in a time of danger, at the household's own asking. Each is meant to be temporary." },
+  { term: "The Book", words: ["book of faults"],
+    meaning: "The Book of Faults: in it each woman writes, out of love, what she has seen amiss in her sisters." },
+  { term: "The Gate", words: ["padlock", "padlocked"],
+    meaning: "The padlocked gate at the foot of the drive, and the leave a woman must have to pass it." },
+  { term: "Outside", words: ["outside was renounced"],
+    meaning: "Everything beyond the gate. It is not spoken of." },
+  { term: "Backsliding", words: ["backsliding", "backslide"],
+    meaning: "A falling-away from what the house has given up. The worst thing a woman can do, after leaving." },
+  { term: "The Fold", words: ["the fold"],
+    meaning: "The household, gathered under one vow of obedience. There is no outside the Fold, only the lost." }
 ];
