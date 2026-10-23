@@ -25,17 +25,18 @@
   var WK = window.RACINATION_WORKING;
   var CP = window.RACINATION_COMPUTING;
   var SL = window.RACINATION_SLIDE;
+  var OW = window.RACINATION_OUTSIDE;
 
   var SAVE_KEY = "racination.save.v1";
   var ADULT_KEY = "racination.adult";
   var TESTING_KEY = "racination.testing";
-  var SAVE_VERSION = 11;
+  var SAVE_VERSION = 12;
 
   var screenEl = document.getElementById("screen");
   var borderEl = document.getElementById("border");
   var fileInput = document.getElementById("import-file");
 
-  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !EV || !IN || !SK || !WK || !CP || !SL || !DATA.slide || !DATA.slideEvents || !DATA.computing || !DATA.computingEvents || !DATA.working || !DATA.ephemeris || !DATA.workingEvents || !DATA.scenekit || !DATA.consent || !DATA.romanceEvents || !DATA.events || !DATA.letters || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
+  if (!HOUSE || !HOUSE.startDate || !H || !MI || !EC || !RR || !DR || !EV || !IN || !SK || !WK || !CP || !SL || !OW || !DATA.outside || !DATA.outsideEvents || !DATA.slide || !DATA.slideEvents || !DATA.computing || !DATA.computingEvents || !DATA.working || !DATA.ephemeris || !DATA.workingEvents || !DATA.scenekit || !DATA.consent || !DATA.romanceEvents || !DATA.events || !DATA.letters || !DATA.rules || !DATA.economy || !DATA.appearance || !DATA.wardrobe || !DATA.residents || !DATA.mistress) {
     screenEl.innerHTML = '<p class="warn">One of the game’s files is missing or has a mistake in it, '
       + "so the game cannot start. If you have just edited a file in the data folder, check it for a missing "
       + "comma or quotation mark.</p>";
@@ -174,6 +175,7 @@
   WK.setRandom(rand);
   CP.setRandom(rand);
   SL.setRandom(rand);
+  OW.setRandom(rand);
 
   function pick(list, avoid) {
     if (!list || !list.length) return "";
@@ -233,6 +235,7 @@
     WK.ensure(state);
     CP.ensure(state);
     SL.ensure(state);
+    OW.ensure(state);
     return state;
   }
 
@@ -289,6 +292,9 @@
     // Milestone 9b: the Slide.
     SL.ensure(s);
     if (s.version < 11) s.version = 11;
+    // Milestone 10a: the outside world.
+    OW.ensure(s);
+    if (s.version < 12) s.version = 12;
     if (!Array.isArray(s.departed)) s.departed = [];
     if (typeof s.nextId !== "number") s.nextId = s.residents.length + 1;
     return s;
@@ -405,6 +411,7 @@
     IN.weekly(state).forEach(function (e) { events.push(e); });
     WK.weekly(state).forEach(function (e) { events.push(e); });
     SL.weekly(state).forEach(function (e) { events.push(e); });
+    OW.weekly(state).forEach(function (e) { events.push(e); });
     EV.takeNotes(state).forEach(function (n) { events.unshift(n.result); });
 
     var people = state.residents.map(function (r) {
@@ -604,6 +611,7 @@
       + (state.romance ? '<button data-act="bonds">Bonds</button>' : "")
       + (state.working && state.working.discovered ? '<button data-act="calendar">Calendar</button>' : "")
       + (state.computing ? '<button data-act="computing">Computing</button>' : "")
+      + (state.outside ? '<button data-act="outside">Outside</button>' : "")
       + '<button data-act="settings">Settings</button>'
       + (state.house ? '<button data-act="house">House</button>' : "")
       + (state.house ? '<button data-act="rules">Rules</button>' : "")
@@ -1778,6 +1786,38 @@
       + '</select></label></div><div class="actions"><button data-act="cp-order" data-game="' + id + '">Order the run</button></div>';
   }
 
+  /* ---------- The outside world (Milestone 10a) ---------- */
+
+  function viewOutside() {
+    var o = state.outside;
+    function part(kind, title, band) {
+      var w = OW.word(kind, o[kind]);
+      return '<h2 class="band ' + band + '">' + esc(title) + "</h2>"
+        + '<div class="pane"><p><strong>' + esc(capital(w.word)) + ".</strong> " + esc(T(w.line)) + "</p></div>";
+    }
+    var fams = state.residents.filter(function (r) { return r.family; }).map(function (r) {
+      return "<tr><td>" + residentLink(r) + "</td><td>" + esc(OW.familyWord(r)) + "</td></tr>";
+    }).join("");
+    var tools = testing ? '<div class="testing"><p class="small">Testing: village ' + Math.round(o.village) + ", press " + Math.round(o.press) + ", officialdom " + Math.round(o.official)
+      + ". Families: " + esc(state.residents.filter(function (r) { return r.family; }).map(function (r) {
+        return r.surname + " " + Math.round(r.family.concern) + " (stage " + r.family.stage + (OW.goodReason(state, r) ? ", good reason" : "") + ")";
+      }).join("; ") || "none") + ".</p></div>" : "";
+    return statusBar() + takeFlash()
+      + '<div class="body">'
+      + '<h2 class="band black">The Outside</h2>'
+      + '<p class="dateline">What the world beyond the gate makes of the house</p>'
+      + part("village", "The village", "blue")
+      + part("press", "The press", "magenta")
+      + part("official", "Officialdom", "black")
+      + '<h2 class="band blue">The families</h2>'
+      + (fams ? '<div class="book" style="border-top:3px double var(--blue)"><table><thead><tr><th>Resident</th><th>Her family is</th></tr></thead><tbody>' + fams + "</tbody></table></div>"
+        : '<div class="pane"><p>No woman in the house has family who write.</p></div>')
+      + '<p class="small note">Families judge from what they hear, and from what they do not.</p>'
+      + tools
+      + '<div class="actions"><button class="primary" data-act="back" data-primary>Back to the week</button></div>'
+      + "</div>";
+  }
+
   /* ---------- The house: rooms ---------- */
 
   function viewHouse() {
@@ -1923,6 +1963,7 @@
       + '<div class="pane"><p>' + esc(bg.blurb) + "</p>"
       + "<p><strong>What she wants:</strong> " + esc(des.text) + "</p>"
       + "<p><strong>Ties to the outside world:</strong></p>" + ties
+      + (r.family ? "<p><strong>Her family:</strong> " + esc(OW.familyWord(r)) + ".</p>" : "")
       + '<p class="note small">She keeps something back.</p></div>'
       + '<h2 class="band blue">Her skills</h2>'
       + '<div class="book" style="border-top:3px double var(--blue)"><table><tbody>' + skills + "</tbody></table></div>"
@@ -2250,6 +2291,7 @@
       case "bonds": html = viewBonds(); break;
       case "calendar": html = viewCalendar(); break;
       case "computing": html = viewComputing(); break;
+      case "outside": html = viewOutside(); break;
       case "mistress": html = state.mistress ? viewMistress() : viewCreate(); break;
       case "game":
         if (!state.mistress) html = viewCreate();
@@ -2483,6 +2525,7 @@
         rerenderKeepingPlace(); break;
       case "calendar": calMonth = null; goView("calendar"); break;
       case "computing": goView("computing"); break;
+      case "outside": goView("outside"); break;
       case "cp-pitch":
         var cpt = document.getElementById("cp-title"), cpy = document.getElementById("cp-type"), cps = document.getElementById("cp-scope");
         var pr = CP.pitch(state, cpt ? cpt.value : "", cpy ? cpy.value : "", cps ? cps.value : "");

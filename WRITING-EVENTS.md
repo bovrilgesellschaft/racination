@@ -1,11 +1,12 @@
 # Writing your own events
 
-Events live in seven files:
+Events live in eight files:
 
 - `data/letters.js` holds letters, which arrive with the post at Matins.
 - `data/events.js` holds visitors and household incidents, which happen midweek on the week's business screen.
 - `data/stories.js` holds the household's longer stories: recruits, the two crises, asking to leave, secrets and the Mistress's contacts. Its opening comment lists a few extra conditions and effects used there.
 - `data/romance.js` holds bondings, jealousy, the truth about a yes, amends, and the failure-state ladder. Most of these are brought by the game itself. Its opening comment lists the extra conditions and effects (`coercionAbove`, `rungBelow`, `sameCourtship`, `bond`, `bondMistress`, `breakBond`, `amends`, `truth`).
+- `data/outside-events.js` holds the outside world's events: the families, the village and the authorities. Its opening comment lists the extras (`when: { outside: {...} }`, `effects: { outside: {...} }`, `familyConcern` and `setRule`).
 - `data/slide-events.js` holds the Slide's events: the household's petitions for Ordinances, the Mistress's sleepless proposals, the devout's petitions against Concessions, and incursions of the Pit. Its opening comment lists the extras (`when: { slide: {...} }` and `effects: { slide: {...} }`). An event marked `incursion: true` costs half the Doubt in a house leaning to Play.
 - `data/computing-events.js` holds the Computing Room's events: fan letters, pirates, faulty tape, the computing press and the programmer tempted away. Its opening comment lists the extras (`when: { computing: {...} }` and `effects: { computing: {...} }`).
 - `data/working-events.js` holds the Working's events: discovery, the readings, secret Workings, being seen, the Chamber, and the sinister current. Its opening comment lists the extras (`when: { working: {...} }` and `effects: { working: {...} }`).

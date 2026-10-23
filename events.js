@@ -37,7 +37,8 @@
       .concat((D.romanceEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }))
       .concat((D.workingEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }))
       .concat((D.computingEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }))
-      .concat((D.slideEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }));
+      .concat((D.slideEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }))
+      .concat((D.outsideEvents || []).map(function (e) { if (!e.kind) e.kind = "incident"; return e; }));
   }
 
   function byId(id) {
@@ -146,6 +147,10 @@
     if (w.working) {
       var WK = window.RACINATION_WORKING;
       if (!WK || !WK.conditionOK(state, w.working)) return null;
+    }
+    if (w.outside) {
+      var OWc = window.RACINATION_OUTSIDE;
+      if (!OWc || !OWc.conditionOK(state, w.outside)) return null;
     }
     if (w.slide) {
       var SLc = window.RACINATION_SLIDE;
@@ -466,6 +471,10 @@
     if (fx.working) {
       var WK2 = window.RACINATION_WORKING;
       if (WK2) WK2.applyEffects(state, fx.working);
+    }
+    if (fx.outside || fx.familyConcern || fx.setRule) {
+      var OWe = window.RACINATION_OUTSIDE;
+      if (OWe) OWe.applyEffects(state, p, fx);
     }
     if (fx.slide) {
       var SLe = window.RACINATION_SLIDE;

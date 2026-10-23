@@ -3,15 +3,14 @@
 A household-management game of devotion, discipline and the Pit, 1983–1989.
 Adults only (18+).
 
-Current build: **Milestone 9b, the Slide**. The Pit now rises with the
-decade, through six bands from Clean to Breach, and the gentle means of holding
-it back stop being enough around 1985–86. The household begins to petition for
-Ordinances (the Silence, the Book of Faults, the Gate, the Fold and the rest),
-and the Mistress, lying awake, begins to propose them herself. They work, at
-first. Concessions (a radio, a telephone, modern clothes) are the humane
-alternative. As the house hardens, its voice changes, and at a certain point
-love ends in it, for good. A new ending, the Fold, waits at the end of that
-road. Milestones 1 to 9 are all still here.
+Current build: **Milestone 10a, the outside world (first half)**. A new
+**Outside** page shows what the village, the press and officialdom make of the
+house, in words. The village can be charmed or turn hostile; families who have
+heard too little, or too much, write, visit, instruct solicitors and call the
+police, and sometimes they are right; the council, the fire officer, the
+Inland Revenue and a detective constable take an interest. The press, the chat
+show, the computing press, the political chain and the Front Page come in 10b.
+Milestones 1 to 9b are all still here.
 
 ## How to play it
 
@@ -55,6 +54,8 @@ Everything in the `data` folder is for editing:
 - `data/glossary.js`: the house's language and when each term unlocks.
 - `data/consent.js`: the consent model, the Evenings, courtship, the rite and
   its lines, paying guests' rites, and the failure-state ladder.
+- `data/outside.js`: the village, the press, officialdom and the families.
+- `data/outside-events.js`: the outside world's events.
 - `data/slide.js`: the Slide: the rising tide, the six bands, the Ordinances,
   the Concessions, the end of love and the three voices of the house.
 - `data/slide-events.js`: petitions, the Mistress's proposals and incursions.
@@ -105,6 +106,7 @@ for checking the game and will be removed before release.
 | `rules.js` | House rules, objections, the Housekeeper, contributions |
 | `dress.js` | The Sewing Room, the shops, deliveries and wear |
 | `events.js` | Choosing, showing and resolving events; Belief–Play; the glossary |
+| `outside.js` | The outside world: the village, the press, officialdom, families |
 | `slide.js` | The Slide: the tide, bands, Ordinances, Concessions, Severity, the end of love, the house's voice |
 | `computing.js` | The Computing Room: development, cassette runs, reviews and sales |
 | `working.js` | The Working: windows, planning, strength, nudges, the Chamber |
